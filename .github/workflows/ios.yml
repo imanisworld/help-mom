@@ -1,0 +1,27 @@
+name: iOS build and tests
+
+on:
+  push:
+    branches:
+      - chore/creative-moments-phase1-audit
+    paths:
+      - 'CreativeMoments/**'
+      - 'CreativeMomentsTests/**'
+      - 'CreativeMoments.xcodeproj/**'
+      - 'Tools/**'
+  pull_request:
+    branches: [main]
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Build and test
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          bash Tools/build_and_test.sh
