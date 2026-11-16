@@ -1,5 +1,5 @@
 /* App-shell offline cache. User content stays only in browser storage. */
-const VERSION='creative-moments-shell-v3-20261115';
+const VERSION='creative-moments-shell-v4-notebook-20261115';
 const CORE=['/','/index.html','/style.css','/app.mjs','/data.mjs','/manifest.webmanifest','/assets/icon-192.png','/assets/icon-512.png'];
 const ART=Array.from({length:12},(_,i)=>`/assets/scene-${String(i+1).padStart(2,'0')}.webp`);
 self.addEventListener('install',event=>event.waitUntil((async()=>{
