@@ -367,3 +367,73 @@ p{line-height:1.55}.app{max-width:1050px}
 @media print{
  .mom-cover,.book-tabs,.mom-workspace,.home-backup{display:none!important}
 }
+
+
+/* Daily writing page and simple, directly editable notebook cover. */
+.cover-edit-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.cover-edit-actions .button{min-height:44px}
+.journal-page{
+  max-width:850px;
+  background:#fffdfa;
+  border-color:#e8ded2;
+  box-shadow:0 7px 0 #eee5da,0 10px 25px #41334414;
+  padding:clamp(20px,4vw,36px)
+}
+.journal-page h2{font-size:clamp(25px,4vw,33px);margin:0 0 22px}
+.journal-date-controls{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin:0 0 24px}
+.journal-date-controls .input[type=date]{width:auto;flex:1 1 170px;max-width:255px}
+.journal-writing{
+  min-height:350px;max-height:65vh;
+  resize:vertical;
+  padding:20px 18px;
+  background-color:#fffdfa;
+  background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 35px,#e9e0e7 36px,#e9e0e7 37px);
+  background-attachment:local;
+  background-position:0 8px;
+  background-size:100% 37px;
+  border:1px solid #e4d9df;
+  line-height:37px;font-size:18px;color:#443548;
+}
+.journal-writing::placeholder{color:#968794}
+.journal-recent{max-width:850px}
+.journal-dates{display:flex;flex-wrap:wrap;gap:9px}
+.journal-dates .button[aria-current=date]{background:#5a3c61;color:#fff}
+.journal-legacy{max-width:850px;margin:20px 0}
+.older-notes{
+  padding:17px 18px;border:1px solid #e7dce6;
+  border-radius:17px;background:#f7f2f5;
+}
+.older-notes>summary{
+  cursor:pointer;font-weight:700;font-size:16px;color:#624c66;
+  padding:4px;
+}
+.older-notes[open]>summary{margin-bottom:18px}
+@media(max-width:520px){
+ .journal-date-controls .button.small{padding:9px 11px;font-size:14px}
+ .journal-writing{min-height:390px;font-size:17px}
+ .cover-edit-actions .button{flex:0 1 auto}
+}
+
+
+/* Eight large, labeled-for-screen-readers colors for finger-based coloring. */
+.color-palette{
+ display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+ padding:13px 0 16px;margin:2px 0 10px;
+}
+.color-swatch{
+ display:block;flex:0 0 auto;
+ width:44px;height:44px;min-width:44px;min-height:44px;
+ border-radius:50%;
+ border:2px solid #fff;
+ box-shadow:0 0 0 1px #bcb0b9,0 2px 4px #302c3415;
+ cursor:pointer;
+}
+.color-swatch[aria-pressed=true]{
+ outline:3px solid #604369;outline-offset:3px;
+ box-shadow:0 0 0 1px #4f3557;
+}
+.color-swatch:focus-visible{outline:3px solid #65376e;outline-offset:4px}
+@media(max-width:400px){
+ .color-palette{gap:9px}
+ .color-swatch{width:43px;height:43px;min-width:43px;min-height:43px}
+}
