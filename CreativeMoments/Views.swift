@@ -101,7 +101,6 @@ struct ColorDrawView: View {
                 Text("Choose a picture and make it your own.").font(.title3)
                 Text("Drawings stay with their month. Tap a picture again to keep drawing.")
                     .foregroundStyle(.secondary)
-                YearNavigation(year: $year)
                 Text("Start creating this month").font(.headline)
                 LazyVGrid(columns: textSize.isAccessibilitySize
                           ? [GridItem(.flexible())]
@@ -119,6 +118,7 @@ struct ColorDrawView: View {
                 }
                 Text("Or choose a month below to color its seasonal picture.")
                     .font(.subheadline).foregroundStyle(.secondary)
+                YearNavigation(year: $year)
                 LazyVGrid(columns: textSize.isAccessibilitySize
                           ? [GridItem(.flexible())]
                           : [GridItem(.adaptive(minimum: 240), spacing: 16)], spacing: 16) {
