@@ -10,6 +10,8 @@
 
 - **D-008 (2026-11-15): Do not rewrite state management simply to chase API novelty.** `ObservableObject` / `@EnvironmentObject` are supported SwiftUI APIs; consider migrating to `@Observable` only after a passing baseline and a concrete simplification or performance benefit.
 
+- **D-009 (2026-11-15): Independent everyday use is the next delivery gate.** Use the four-section home concept in `PROJECT_PLAN.md`, preserve existing content/data, and deliver an installed app. Developer setup is separate from Mom's experience. Observe uncoached use before expanding the feature backlog.
+
 ## Pending product decisions
 - iPad-first creative experience vs equal phone/tablet parity.
 - Optional iCloud synchronization after editable backup/restore is proven.

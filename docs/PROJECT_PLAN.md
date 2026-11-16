@@ -6,6 +6,41 @@ A local-first creative planner combining date-based planning, notes, reflection,
 ## Current implementation status
 A working copy includes initial Today/due-date/year-navigation/carry-forward/editable-backup changes. They are **not** a completed phase: Xcode compilation and 12 XCTest tests pass in CI, while manual UI/device checks and several listed capabilities remain incomplete. See `docs/FEATURE_MATRIX.md` for source-level coverage.
 
+## Next milestone — Mom can use the app independently
+
+Deliver an installable iPhone/iPad app that opens from its icon and supports planning, drawing, reflection and finding saved work without coding knowledge or developer assistance. Ease of use is a requirement for this milestone, not final release polish. This milestone takes priority over the feature expansion backlog below; preserve its data-safety gates.
+
+### Proposed home (not implemented yet)
+
+**Creative Moments** — Your space to plan, create, and reflect.
+
+| Button | Supporting text | Intended destination |
+|---|---|---|
+| My Planner | View and edit plans | Existing calendar, day notes and checklists |
+| Color & Draw | Make something | Seasonal picture selection and existing drawing editor |
+| My Journal | Write or reflect | Direct access to editable notes/reflections |
+| My Creations | See saved work | Browse, reopen and share saved drawings |
+
+Reuse existing planner records and drawings. Separate journal navigation and a creations browser are planned work, not existing completed features. Begin with clearly labeled sections; search is optional if finding work is already easy. Coloring initially means the existing freehand drawing tools; tap-to-fill is not implied.
+
+### Everyday experience requirements
+
+- Large labeled buttons, readable text that respects text-size settings, few menus and an obvious way home.
+- Edit planner content directly inside the app. Save automatically, preserve work across closing/reopening, and explain save failures in plain language.
+- Select an existing illustration and draw using a finger or Apple Pencil.
+- Find and reopen previous work through clear sections; share or print through a labeled Share action.
+- Make common mistakes recoverable: retain drawing undo/redo, verify editing undo, and provide confirmation plus a recovery path for destructive actions. General planner undo is not currently verified or complete.
+- No Xcode, GitHub, Terminal, source ZIPs, code editing or file-path instructions in the everyday user journey. Developer tooling remains our responsibility.
+
+### Delivery and acceptance
+
+1. Simplify the home and routes using existing functionality; map any new navigation to existing data before changing schemas.
+2. Verify edit, automatic save, reopen, find, undo/recovery and share on device. Keep CI compilation and regression tests passing.
+3. Prepare signing/distribution and deliver a TestFlight installation to Mom; App Store delivery follows release review. Account/signing readiness has not been established yet.
+4. Observe Mom performing the tasks in `TEST_PLAN.md` without coaching. Fix confusion before adding recurring tasks, reminders or other major features.
+
+**Done means:** she can install the provided build, tap its icon, create/edit something, close and reopen it, find her work, recover a simple mistake and share it without developer instructions. A source archive or passing CI alone does not satisfy this milestone.
+
 ## Delivery order and gates
 
 ### P0 — Import & verify baseline (immediate)

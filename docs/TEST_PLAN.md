@@ -56,3 +56,17 @@
 - Nonblocking toolchain notices: unused AppIntents metadata extraction, signed Apple XCTest libraries not stripped, duplicate simulator architectures; existing checkout action reports Node 20 deprecation. No new frameworks were added to silence these notices.
 - Local full Xcode remains absent. Manual UI/artwork/PDF smoke tests and real iPad/Pencil testing remain outstanding; XCTest success does not certify those flows.
 - Subsequent documentation-only commits do not change the tested app or scripts.
+
+## Independent-use acceptance (planned; not yet run)
+
+After installation, ask Mom to complete these tasks without step-by-step coaching:
+
+1. Open Creative Moments from its icon and find My Planner.
+2. Add a plan or checklist item, change it, then return home.
+3. Choose a seasonal picture, draw, make a mistake and undo it.
+4. Write a reflection through My Journal.
+5. Close and reopen the app; find the plan, reflection and drawing without manually saving.
+6. Reopen a drawing through My Creations and share or print it.
+7. Cancel an accidental destructive action and demonstrate recovery where deletion is supported.
+
+Record completion, hesitation, wrong turns, requests for help, and any lost work. Repeat with larger system text and check layouts on iPhone and iPad. Any required developer-tool step or lost work fails acceptance. Proposed home/journal/gallery routes must be implemented before testing them; do not record this checklist as passed from unit-test results.
