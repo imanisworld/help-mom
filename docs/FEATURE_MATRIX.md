@@ -24,9 +24,9 @@
 
 | Feature | Implementation | Verification |
 |---|---|---|
-| Four-section home | Large labeled cards with Dynamic Type support; native back navigation | Syntax passed; native CI pending |
+| Four-section home | Large labeled cards with Dynamic Type support, stable UI-test identifiers and native back navigation | Automated UI tests added; native CI pending |
 | My Planner | Existing Today, months, cover and backup routes preserved | Manual navigation pending |
-| Color & Draw | Twelve seasonal pictures by year; opens existing month/section; current-month free draw | Manual drawing/return pending |
+| Color & Draw | All four current-month activities plus twelve seasonal pictures by selected year; opens existing drawings | XCUITest and manual drawing/return pending |
 | My Journal | Month browser and shared planner notes/reflections | New shared-binding persistence test added; CI pending |
 | My Creations | Existing drawing discovery, thumbnails, reopen and existing editor sharing | New legacy discovery and restore-refresh tests added; CI pending |
 
