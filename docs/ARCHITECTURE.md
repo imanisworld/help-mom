@@ -45,6 +45,7 @@ HomeView ── PlannerView ── TodayView / MonthView ── store methods + 
 - `BackupView` asks `store.exportEditableBackup()` for a complete JSON archive containing planner, cover JPEG and every saved drawing. The user chooses where to share/store the exported file.
 - Restore uses the iOS document picker, explicit destructive confirmation, and `store.restoreEditableBackup(from:)`. The store verifies format, cover and drawings, stages replacement files, then moves the old directory to a sibling recovery folder before switching. Do not bypass this flow with direct file replacement.
 - On unreadable saved state, `PlannerStore` disables further writes instead of replacing files with empty defaults. Keep that safeguard intact.
+- **Save integrity (Phase 3):** `flush()` returns success/failure. Editable backup export aborts if current notes/tasks cannot be written, and restore flushes current edits **before** moving their directory into recovery. Failed `.drawing` writes do not update the drawing cache or increment the gallery revision. Callers that only request normal autosave can ignore the return value; backup/restore must check it.
 
 ## Data contract (version 1)
 

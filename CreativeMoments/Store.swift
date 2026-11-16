@@ -118,14 +118,22 @@ final class PlannerStore: ObservableObject {
         pendingSave?.cancel()
         pendingSave = Task { [weak self] in
             do { try await Task.sleep(nanoseconds: 350_000_000) } catch { return }
-            self?.flush()
+            _ = self?.flush()
         }
     }
-    func flush() {
+    /// Returns false if the latest planner edits could not be persisted.
+    /// Exports and restores must not proceed after a failed save.
+    @discardableResult
+    func flush() -> Bool {
         pendingSave?.cancel()
-        guard writable else { return }
-        do { try JSONEncoder().encode(document).write(to: root.appendingPathComponent("planner.json"), options: .atomic) }
-        catch { errorMessage = "Could not save your changes. Please free some storage and try again. \(error.localizedDescription)" }
+        guard writable else { return false }
+        do {
+            try JSONEncoder().encode(document).write(to: root.appendingPathComponent("planner.json"), options: .atomic)
+            return true
+        } catch {
+            errorMessage = "Could not save your changes. Please free some storage and try again. \(error.localizedDescription)"
+            return false
+        }
     }
     func setCover(_ image: UIImage?) {
         guard writable else { return }
@@ -162,9 +170,9 @@ final class PlannerStore: ObservableObject {
     func saveDrawing(_ drawing: PKDrawing, month: PlannerMonth, section: DoodleSection) {
         guard writable else { return }
         let key = drawingKey(month, section)
-        drawingCache[key] = drawing
         do {
             try drawing.dataRepresentation().write(to: root.appendingPathComponent(key + ".drawing"), options: .atomic)
+            drawingCache[key] = drawing
             revision += 1
         } catch { errorMessage = "Could not save this drawing. \(error.localizedDescription)" }
     }
@@ -179,7 +187,7 @@ final class PlannerStore: ObservableObject {
     /// PDF exports are separate, non-editable snapshots.
     func exportEditableBackup() throws -> URL {
         guard writable else { throw CocoaError(.fileReadNoPermission) }
-        flush()
+        guard flush() else { throw CocoaError(.fileWriteUnknown) }
         let names = try FileManager.default.contentsOfDirectory(atPath: root.path)
         var drawings: [String: Data] = [:]
         for name in names where name.hasSuffix(".drawing") {
@@ -213,6 +221,8 @@ final class PlannerStore: ObservableObject {
             }
             _ = try PKDrawing(data: bytes)
         }
+        // Capture unsaved edits in the recovery directory before replacing the planner.
+        guard flush() else { throw CocoaError(.fileWriteUnknown) }
         let manager = FileManager.default
         let parent = root.deletingLastPathComponent()
         let staging = parent.appendingPathComponent("CreativeMoments-incoming-\(UUID().uuidString)", isDirectory: true)

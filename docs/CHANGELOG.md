@@ -1,5 +1,14 @@
 # Change log
 
+## 2026-11-15 — Phase 3 save integrity (separate branch; Xcode tests pending)
+- Fail editable backup export if the latest planner save fails; do not silently proceed with an unpersisted state.
+- Flush pending planner changes before backup restore moves the existing files into the local recovery folder.
+- Only publish drawings to the in-memory cache/gallery after the file write succeeds.
+- Added regression cases for save failure, pending-edit recovery and drawing-write errors. No new dependencies, file formats, UI screens or migrations.
+- Native simulator build and new XCTest cases require verification before merging.
+
+
+
 ## Phase 2 completion — navigation/accessibility (native tests pending)
 - Made all four drawing activities visible directly in Color & Draw, including Sketch and Patterns; preserved existing drawing storage and season gallery.
 - Reused the bounded year selector in My Planner to avoid inconsistent year navigation and undersized arrow targets.
