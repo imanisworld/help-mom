@@ -41,3 +41,5 @@
 [Run 43779305378](https://github.com/imanisworld/help-mom/actions/runs/43779305378) used Xcode 26.6 (17F113), iPhoneSimulator26.5 SDK. Compilation failed at `Store.swift:205`: `CocoaError.Code` has no member `fileReadUnknownVersion`. Replaced it with the existing native `fileReadCorruptFile` error for unsupported backup versions; validation still rejects the backup before changing files. The existing unsupported-backup regression test covers this path. Retest pending.
 
 [Run 43779530099](https://github.com/imanisworld/help-mom/actions/runs/43779530099), commit `f6b29d7`: **BUILD SUCCEEDED** on Xcode 26.6. XCTest did not execute because no eligible simulator was found. Added destination/runtime diagnostics to distinguish runner availability from destination selection.
+
+[Run 43779882941](https://github.com/imanisworld/help-mom/actions/runs/43779882941) confirmed available iOS 26.2, 26.4.1 and 26.5 simulator destinations. Destination discovery now captures stderr as well as stdout from Xcode. No additional runtime installation is needed on the CI runner.

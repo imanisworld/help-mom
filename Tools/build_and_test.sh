@@ -10,7 +10,7 @@ fi
 args=(-project CreativeMoments.xcodeproj -scheme CreativeMoments -configuration Debug -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO)
 xcodebuild "${args[@]}" -destination 'generic/platform=iOS Simulator' build
 if [[ -z "${DESTINATION:-}" ]]; then
-  DESTINATION="$(xcodebuild -project CreativeMoments.xcodeproj -scheme CreativeMoments -showdestinations | sed -nE '/platform:iOS Simulator/ { /placeholder/d; s/.*id:([^,}]+).*/platform=iOS Simulator,id=\1/p; }' | sed -n '1p')"
+  DESTINATION="$(xcodebuild -project CreativeMoments.xcodeproj -scheme CreativeMoments -showdestinations 2>&1 | sed -nE '/platform:iOS Simulator/ { /placeholder/d; s/.*id:([^,}]+).*/platform=iOS Simulator,id=\1/p; }' | sed -n '1p')"
 fi
 if [[ -z "$DESTINATION" ]]; then
   xcodebuild -project CreativeMoments.xcodeproj -scheme CreativeMoments -showdestinations
