@@ -1,5 +1,13 @@
 # Test plan and verification record
 
+## Phase 2 finish — UI navigation verification (pending)
+
+- Added `CreativeMomentsUITests/NavigationUITests.swift` to the shared Xcode scheme as a native XCUITest target.
+- Smoke test opens each Home card (My Planner, Color & Draw, My Journal, My Creations), verifies its navigation title, and returns home.
+- Drawing test opens Sketch an idea from Color & Draw and closes the full-screen editor via Done.
+- Run `bash Tools/build_and_test.sh` via the pull-request macOS workflow; note the result only after the tests actually run. Manual large-text and real-device usability checks remain required.
+
+
 ## Automated baseline
 
 1. On a Mac with Xcode, inspect project and scheme, then run `Tools/build_and_test.sh`.
