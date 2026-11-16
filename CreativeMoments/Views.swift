@@ -25,16 +25,16 @@ struct HomeView: View {
                               : [GridItem(.adaptive(minimum: 300), spacing: 16)], spacing: 16) {
                         NavigationLink { PlannerView() } label: {
                             HomeCard(title: "My Planner", subtitle: "View and edit plans", symbol: "calendar", color: plum)
-                        }
+                        }.accessibilityIdentifier("home.planner")
                         NavigationLink { ColorDrawView() } label: {
                             HomeCard(title: "Color & Draw", subtitle: "Make something", symbol: "paintpalette", color: Color(red: 0.28, green: 0.43, blue: 0.35))
-                        }
+                        }.accessibilityIdentifier("home.draw")
                         NavigationLink { JournalView() } label: {
                             HomeCard(title: "My Journal", subtitle: "Write or reflect", symbol: "book.closed", color: Color(red: 0.48, green: 0.32, blue: 0.23))
-                        }
+                        }.accessibilityIdentifier("home.journal")
                         NavigationLink { CreationsView() } label: {
                             HomeCard(title: "My Creations", subtitle: "See saved work", symbol: "photo.on.rectangle.angled", color: Color(red: 0.29, green: 0.37, blue: 0.53))
-                        }
+                        }.accessibilityIdentifier("home.creations")
                     }.buttonStyle(.plain)
                     NavigationLink { BackupView() } label: {
                         Label("Back up your work", systemImage: "externaldrive")
