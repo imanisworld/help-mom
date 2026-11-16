@@ -1,0 +1,21 @@
+# Xcode user state and build products
+.DS_Store
+*.xcuserstate
+xcuserdata/
+DerivedData/
+.build/
+build/
+*.ipa
+*.app
+*.dSYM
+*.dSYM.zip
+# Preserve checked-in source/assets and Xcode schemes.
+
+# Local tooling, credentials, and test results
+.venv/
+__pycache__/
+*.xcresult/
+.env
+.env.*
+*.p12
+*.mobileprovision
