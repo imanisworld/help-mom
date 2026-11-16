@@ -257,14 +257,18 @@ function drawSelection(){
  const choice=node('button','scene');choice.type='button';const image=node('img');image.src=sceneSrc(m);image.alt=`${MONTHS[m-1]} coloring illustration`;image.loading='lazy';add(choice,image,node('b','',MONTHS[m-1]));choice.onclick=()=>{selected=new Date(selected.getFullYear(),m-1,1);openEditor('season')};grid.append(choice)}main.append(grid);
 }
 function drawingKey(){return `${currentMonth()}-${drawMode}`}
-function openEditor(mode){drawMode=mode;brushTool=mode==='season'?'fill':'pen';const d=state.drawings[drawingKey()];strokes=Array.isArray(d?.strokes)?structuredClone(d.strokes):[];redoStack=[];zoom=1;panX=0;panY=0;screen='editor';render()}
+function openEditor(mode){drawMode=mode;brushTool=mode==='season'?'fill':'pen';if(mode==='season'&&brushColor==='#764880')brushColor='#e9a3c0';const d=state.drawings[drawingKey()];strokes=Array.isArray(d?.strokes)?structuredClone(d.strokes):[];redoStack=[];zoom=1;panX=0;panY=0;screen='editor';render()}
 function drawStroke(ctx,stroke){
  if(!stroke||!Array.isArray(stroke.points)||!stroke.points.length)return;
  ctx.save();
  if(stroke.tool==='fill'){
    ctx.fillStyle=stroke.color;
    const ratio=1000/FILL_SIZE;
-   for(const [y,x0,x1] of stroke.runs||[])ctx.fillRect(x0*ratio,y*ratio,(x1-x0)*ratio,ratio+.06);
+   for(const [y,x0,x1] of stroke.runs||[]){
+     const left=Math.floor(x0*ratio),top=Math.floor(y*ratio);
+     const right=Math.ceil(x1*ratio),bottom=Math.ceil((y+1)*ratio);
+     ctx.fillRect(left,top,right-left,bottom-top);
+   }
    ctx.restore();return;
  }
  const erased=stroke.tool==='eraser';ctx.globalCompositeOperation=erased?'destination-out':'source-over';
@@ -291,9 +295,20 @@ function drawEditor(){
  const top=node('div','flex between');add(top,btn('‹ Color & Draw',()=>navigate('draw'),'button secondary'),node('span','tag','Finger · stylus · mouse'));main.append(top);
  const tools=region();const toolrow=node('div','tools');const choices=[];
  for(const [kind,text] of [...(drawMode==='season'?[['fill','Fill area']]:[]),['pen','Pen'],['marker','Marker'],['eraser','Eraser']]){const b=btn(text,()=>{brushTool=kind;for(const x of choices){const enabled=x.dataset.tool===kind;x.classList.toggle('active',enabled);x.setAttribute('aria-pressed',String(enabled))}},'tool-button'+(brushTool===kind?' active':''));b.dataset.tool=kind;b.setAttribute('aria-pressed',String(brushTool===kind));choices.push(b);toolrow.append(b)}
- const picker=input('color');picker.className='color';picker.value=brushColor;picker.setAttribute('aria-label','Pen color');picker.oninput=()=>brushColor=picker.value;
+ const picker=input('color');picker.className='color';picker.value=brushColor;picker.setAttribute('aria-label','Choose custom color');
  const range=input('range');range.className='range';range.min='2';range.max='30';range.value=brushSize;range.setAttribute('aria-label','Brush width');range.oninput=()=>brushSize=Number(range.value);
  add(toolrow,node('span','tool-label','Color'),picker,node('span','tool-label','Size'),range);tools.append(toolrow);
+ const palette=node('div','color-palette');palette.setAttribute('role','group');palette.setAttribute('aria-label','Quick colors');
+ const swatches=[];
+ const colors=[['Pink','#e9a3c0'],['Orange','#f0a26d'],['Yellow','#f5d56b'],['Green','#a8d9a8'],['Blue','#83bee4'],['Purple','#bd9cde'],['Brown','#a67f63'],['Black','#33313b']];
+ const markPalette=()=>{for(const button of swatches)button.setAttribute('aria-pressed',String(button.dataset.color===brushColor.toLowerCase()))};
+ for(const [name,color] of colors){
+   const b=btn('',()=>{brushColor=color;picker.value=color;markPalette()},'color-swatch');
+   b.style.backgroundColor=color;b.dataset.color=color;b.setAttribute('aria-label','Choose '+name+' color');
+   b.title=name;swatches.push(b);palette.append(b);
+ }
+ picker.oninput=()=>{brushColor=picker.value;markPalette()};
+ markPalette();tools.append(palette);
  const viewport=node('div','canvas-viewport');viewport.setAttribute('aria-label','Drawing area');
  const layer=node('div','art-layer');editorLayer=layer;
  let fillImageData=null;
