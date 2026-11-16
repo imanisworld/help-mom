@@ -76,7 +76,7 @@ def run(url):
         page.mouse.move(x + 30, y + 25, steps=5)
         page.mouse.up()
         assert "Drawing saved" in page.locator("#save-status").inner_text()
-        saved = page.evaluate("JSON.parse(localStorage.getItem(arguments[0]))", STORAGE_KEY)
+        saved = page.evaluate("(key) => JSON.parse(localStorage.getItem(key))", STORAGE_KEY)
         assert any(key.endswith("-sketch") and data["strokes"] for key, data in saved["drawings"].items())
         open_home(page)
         page.get_by_role("button", name=re.compile("My Creations")).click()
@@ -122,11 +122,11 @@ def run(url):
         page.locator("#new-task").fill("Change from first tab")
         page.get_by_role("button", name="Add", exact=True).click()
         assert second.get_by_role("button", name="Reload latest saved work").is_visible()
-        original = page.evaluate("localStorage.getItem(arguments[0])", STORAGE_KEY)
+        original = page.evaluate("(key) => localStorage.getItem(key)", STORAGE_KEY)
         second.get_by_role("button", name=re.compile("My Planner")).click()
         second.locator("#new-task").fill("Must not overwrite newer work")
         second.get_by_role("button", name="Add", exact=True).click()
-        assert second.evaluate("localStorage.getItem(arguments[0])", STORAGE_KEY) == original
+        assert second.evaluate("(key) => localStorage.getItem(key)", STORAGE_KEY) == original
         second.close()
 
         # Service-worker-controlled offline reopening (Chromium, not Safari).
