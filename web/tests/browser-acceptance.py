@@ -48,6 +48,17 @@ def run(url):
 
         # Home and planner: create, persist, and reopen.
         page.goto(url, wait_until="networkidle")
+        # The redesigned home must be comfortably legible on a phone without sideways scroll.
+        assert page.get_by_role("heading", name="What would you like to do?").is_visible()
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2")
+        home_cards = page.locator(".card")
+        assert home_cards.count() == 4
+        bounds = [c.bounding_box() for c in home_cards.all()]
+        assert all(box and box["width"] >= 280 and box["height"] >= 100 for box in bounds)
+        assert bounds[0]["y"] < bounds[1]["y"] < bounds[2]["y"] < bounds[3]["y"], "Phone home cards should be stacked, not squeezed into two columns"
+        screenshots = ROOT / "test-artifacts"
+        screenshots.mkdir(exist_ok=True)
+        page.screenshot(path=str(screenshots / "home-mobile.png"), full_page=True)
         assert page.get_by_role("button", name=re.compile("My Planner")).is_visible()
         page.get_by_role("button", name=re.compile("My Planner")).click()
         page.locator("#new-task").fill("Browser acceptance task")
@@ -57,6 +68,7 @@ def run(url):
         page.get_by_role("button", name=re.compile("My Planner")).click()
         assert page.get_by_text("Browser acceptance task").count() == 1
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2")
+        page.screenshot(path=str(screenshots / "planner-mobile.png"), full_page=True)
 
         # Journal: autosave into the same month's record across a reload.
         open_home(page)
@@ -146,8 +158,16 @@ def run(url):
         assert page.get_by_role("button", name=re.compile("My Planner")).is_visible()
         context.set_offline(False)
 
+        # A wider screen must recover the two-column overview.
+        page.set_viewport_size({"width": 1024, "height": 768})
+        page.reload(wait_until="networkidle")
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2")
+        wide = [c.bounding_box() for c in page.locator(".card").all()]
+        assert len(wide) == 4 and abs(wide[0]["y"] - wide[1]["y"]) <= 2, "Desktop cards should use two columns"
+        page.screenshot(path=str(screenshots / "home-desktop.png"), full_page=True)
+
         assert not failures, "Browser runtime errors: " + "; ".join(failures)
-        print("PASS: mobile home, planner persistence, journal persistence, drawing/gallery, backup/restore, stale-tab protection, and offline reopen")
+        print("PASS: responsive mobile/desktop home, planner persistence, journal persistence, drawing/gallery, backup/restore, stale-tab protection, and offline reopen")
         context.close()
         browser.close()
 
