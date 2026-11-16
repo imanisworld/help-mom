@@ -2,12 +2,14 @@
  * The original preview localStorage key is retained so existing browser data loads unchanged.
  * No remote storage or third-party analytics are used.
  */
+import { validFillRuns } from './fill.mjs';
+
 export const STORAGE_KEY = 'creative-moments-browser-preview-v1';
 export const RECOVERY_KEY = 'creative-moments-browser-preview-pre-restore-v1';
 export const BACKUP_FORMAT = 'creative-moments-web-backup';
 export const BACKUP_VERSION = 1;
 export const isMonthKey = key => /^\d{4}-(0[1-9]|1[0-2])$/.test(key);
-export const DEFAULT_STATE = () => ({ tasks: {}, notes: {}, days: {}, drawings: {}, joy: {}, carry: {}, focus: {}, coverName: 'My Creative Moments', coverImage: '' });
+export const DEFAULT_STATE = () => ({ tasks: {}, notes: {}, days: {}, journalEntries: {}, drawings: {}, joy: {}, carry: {}, focus: {}, coverName: 'My Creative Moments', coverImage: '' });
 export const monthKey = (year, month) => `${year}-${String(month).padStart(2, '0')}`;
 export const validDate = key => {
   if (typeof key !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
@@ -18,7 +20,7 @@ export const validDate = key => {
 export function normalizeState(input) {
   const out = DEFAULT_STATE();
   if (!input || typeof input !== 'object' || Array.isArray(input)) return out;
-  for (const key of ['tasks', 'notes', 'days', 'drawings', 'joy', 'carry', 'focus']) {
+  for (const key of ['tasks', 'notes', 'days', 'journalEntries', 'drawings', 'joy', 'carry', 'focus']) {
     if (input[key] && typeof input[key] === 'object' && !Array.isArray(input[key])) out[key] = input[key];
   }
   if (typeof input.coverName === 'string') out.coverName = input.coverName.slice(0, 100);
@@ -60,7 +62,7 @@ const isObject = o => o && typeof o === 'object' && !Array.isArray(o);
 export function validateBackup(raw) {
   if (!isObject(raw) || raw.format !== BACKUP_FORMAT || raw.version !== BACKUP_VERSION || !isObject(raw.data)) return { ok: false, error: 'Not a compatible Creative Moments backup.' };
   const input = raw.data;
-  for (const k of ['tasks', 'notes', 'days', 'drawings', 'joy', 'carry', 'focus']) {
+  for (const k of ['tasks', 'notes', 'days', 'journalEntries', 'drawings', 'joy', 'carry', 'focus']) {
     if (input[k] !== undefined && !isObject(input[k])) return { ok: false, error: `Invalid ${k} section.` };
   }
   if (input.coverImage !== undefined && (typeof input.coverImage !== 'string' || (input.coverImage && !/^data:image\/(jpeg|png|webp);base64,[a-zA-Z0-9+/=]+$/.test(input.coverImage)))) return { ok: false, error: 'Invalid cover photo.' };
@@ -69,10 +71,10 @@ export function validateBackup(raw) {
     if (!isMonthKey(month) || !Array.isArray(tasks) || tasks.length > 10000) return { ok: false, error: 'Invalid checklist.' };
     for (const item of tasks) if (!isObject(item) || typeof item.title !== 'string' || item.title.length > 2000 || (item.done !== undefined && typeof item.done !== 'boolean') || (item.dueDate && !validDate(item.dueDate))) return { ok: false, error: 'Invalid checklist item.' };
   }
-  for (const section of ['notes', 'days', 'joy', 'carry', 'focus']) {
+  for (const section of ['notes', 'days', 'journalEntries', 'joy', 'carry', 'focus']) {
     for (const [key, val] of Object.entries(input[section] || {})) {
       if (typeof val !== 'string' || val.length > 1000000) return { ok: false, error: 'Invalid text entry.' };
-      if (section === 'days' ? !/^\d{4}-(0[1-9]|1[0-2])-(0?[1-9]|[12][0-9]|3[01])$/.test(key) : !isMonthKey(key)) return { ok: false, error: 'Invalid entry date.' };
+      if (section === 'days' ? !/^\d{4}-(0[1-9]|1[0-2])-(0?[1-9]|[12][0-9]|3[01])$/.test(key) : section === 'journalEntries' ? !validDate(key) : !isMonthKey(key)) return { ok: false, error: 'Invalid entry date.' };
     }
   }
   for (const [key, drawing] of Object.entries(input.drawings || {})) {
@@ -80,6 +82,7 @@ export function validateBackup(raw) {
     for (const stroke of drawing.strokes) {
       if (!isObject(stroke) || !Array.isArray(stroke.points) || stroke.points.length > 50000 || typeof stroke.color !== 'string' || !Number.isFinite(stroke.width) || stroke.width <= 0 || stroke.width > 300) return { ok: false, error: 'Invalid drawing stroke.' };
       for (const point of stroke.points) if (!Array.isArray(point) || point.length !== 2 || !point.every(v => Number.isFinite(v) && v >= -10000 && v <= 10000)) return { ok: false, error: 'Invalid drawing coordinates.' };
+      if (stroke.tool === 'fill' && !validFillRuns(stroke.runs)) return { ok: false, error: 'Invalid coloring fill.' };
     }
   }
   return { ok: true, data: normalizeState(input), error: null };
