@@ -186,8 +186,9 @@ final class PlannerInteractionTests: XCTestCase {
         XCTAssertEqual(store.record(month).notes, "Older backup")
         let recoveryNames = try FileManager.default.contentsOfDirectory(atPath: parent.path)
             .filter { $0.hasPrefix("CreativeMoments-recovery-") }
+        let recoveryName = try XCTUnwrap(recoveryNames.first)
         XCTAssertEqual(recoveryNames.count, 1)
-        let recoveryURL = parent.appendingPathComponent(recoveryNames[0]).appendingPathComponent("planner.json")
+        let recoveryURL = parent.appendingPathComponent(recoveryName).appendingPathComponent("planner.json")
         let recovered = try JSONDecoder().decode(PlannerDocument.self, from: Data(contentsOf: recoveryURL))
         XCTAssertEqual(recovered.months[month.id]?.notes, "Unsaved latest edits")
     }
