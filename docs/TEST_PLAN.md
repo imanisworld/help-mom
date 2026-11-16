@@ -1,5 +1,12 @@
 # Test plan and verification record
 
+## Phase 3 save-integrity branch (new tests not yet executed)
+
+- New XCTest coverage: blocked `planner.json` write prevents editable export; retry after filesystem recovery saves latest text; restore preserves previously unflushed edits in sibling recovery; failed drawing write does not increment successful-save revision.
+- Run `bash Tools/build_and_test.sh` in macOS Xcode CI after integrating this PR. The prior verified 12-test CI baseline does not establish that these new changes compile or pass.
+- Manual test: create a note and immediately restore an older backup; verify restored note and preserved local recovery copy. Try interrupted/low-storage saves on a test device before release.
+
+
 ## Automated baseline
 
 1. On a Mac with Xcode, inspect project and scheme, then run `Tools/build_and_test.sh`.
