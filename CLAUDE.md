@@ -2,7 +2,7 @@
 
 Start with `docs/ARCHITECTURE.md`, then read `docs/PROJECT_PLAN.md` and `docs/TEST_PLAN.md` before editing. `AGENTS.md` points other agents here.
 
-**Current status:** A local working copy contains Today, year navigation, due dates, explicit carry-forward and editable backup/restore. These changes have **not** been compiled/tested with Xcode. First establish a verified Mac build and regression tests; do not assume runtime correctness.
+**Current status:** A local working copy contains Today, year navigation, due dates, explicit carry-forward and editable backup/restore. Xcode simulator compilation and all 12 XCTest tests passed in CI (see `docs/TEST_PLAN.md`). Local full Xcode installation and manual UI/device checks remain outstanding; do not assume those flows are certified.
 
 - Keep the existing SwiftUI/PencilKit project, 12 scenes, app icon and saved formats. No rewrite.
 - Prefer native APIs and the smallest clear implementation. Do not introduce generic service/repository layers, dependencies, AI, accounts, networking or complex frameworks without demonstrated need and approval.

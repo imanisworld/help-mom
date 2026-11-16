@@ -4,7 +4,7 @@ Use `chore/creative-moments-phase1-audit` in `https://github.com/imanisworld/hel
 
 ## Local development
 
-The `development` sibling checkout is the canonical Git working copy. The two extracted packages remain preserved. `CreativeMoments_iOS 2` supplies the newer app source; the older package is not imported over it. Source, artwork, project IDs and data formats are unchanged by setup.
+The `development` sibling checkout is the canonical Git working copy. The two extracted packages remain preserved. `CreativeMoments_iOS 2` supplies the newer app source; the older package is not imported over it. Artwork, project IDs and data formats are preserved. One invalid Cocoa error constant in backup restore was corrected after a native compiler failure.
 
 Open the `development` folder in VS Code (File → Open Folder). Run Terminal → Run Build Task for the native build and tests, or select the static package check task. No VS Code extension, virtual environment, CocoaPods, package manager or third-party framework is required. The extracted package's Python environment mapping to the Xcode project is incorrect and is not used.
 
@@ -32,4 +32,4 @@ For this setup, the existing remote README heading and CI workflow were retained
 
 ## Outstanding validation
 
-This Mac has only `/Library/Developer/CommandLineTools`; no full Xcode was found in `/Applications`. The attempted build exits 2 before compilation. Simulator/XCTest and real iPad/Pencil checks remain required. See `TEST_PLAN.md` for actual results. Do not merge or begin major features until native checks succeed.
+This Mac has only `/Library/Developer/CommandLineTools`; no full Xcode was found in `/Applications`. The attempted build exits 2 before compilation. CI simulator build and all 12 XCTest tests now pass. Local simulator setup and manual UI/real iPad/Pencil checks remain required. See `TEST_PLAN.md` for actual results. Do not merge or begin major features until native checks succeed.

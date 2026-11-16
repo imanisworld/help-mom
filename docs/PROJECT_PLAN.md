@@ -4,7 +4,7 @@
 A local-first creative planner combining date-based planning, notes, reflection, doodling and coloring. Avoid complexity that does not serve planning or creativity. Prefer opt-in, predictable automation over opaque AI actions.
 
 ## Current implementation status
-A working copy includes initial Today/due-date/year-navigation/carry-forward/editable-backup changes. They are **not** a completed phase: Xcode compilation and XCTest are still required, and several listed capabilities remain unimplemented. See `docs/FEATURE_MATRIX.md` for source-level coverage.
+A working copy includes initial Today/due-date/year-navigation/carry-forward/editable-backup changes. They are **not** a completed phase: Xcode compilation and 12 XCTest tests pass in CI, while manual UI/device checks and several listed capabilities remain incomplete. See `docs/FEATURE_MATRIX.md` for source-level coverage.
 
 ## Delivery order and gates
 

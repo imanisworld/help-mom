@@ -21,3 +21,4 @@
 - Build helper runs simulator tests by default; import helper preserves remote files.
 - Local simulator build blocked by missing full Xcode; no runtime success claimed.
 - Fixed the CI-confirmed nonexistent Cocoa error code for unsupported backup versions; rejection and saved formats remain unchanged.
+- Verified Xcode 26.6 simulator build and all 12 XCTest tests (zero failures) in CI run 43780104771.

@@ -38,8 +38,21 @@
 
 ## First native CI build
 
-[Run 43779305378](https://github.com/imanisworld/help-mom/actions/runs/43779305378) used Xcode 26.6 (17F113), iPhoneSimulator26.5 SDK. Compilation failed at `Store.swift:205`: `CocoaError.Code` has no member `fileReadUnknownVersion`. Replaced it with the existing native `fileReadCorruptFile` error for unsupported backup versions; validation still rejects the backup before changing files. The existing unsupported-backup regression test covers this path. Retest pending.
+[Run 43779305378](https://github.com/imanisworld/help-mom/actions/runs/43779305378) used Xcode 26.6 (17F113), iPhoneSimulator26.5 SDK. Compilation failed at `Store.swift:205`: `CocoaError.Code` has no member `fileReadUnknownVersion`. Replaced it with the existing native `fileReadCorruptFile` error for unsupported backup versions; validation still rejects the backup before changing files. The existing unsupported-backup regression test covers this path. Retest passed; see final result below.
 
 [Run 43779530099](https://github.com/imanisworld/help-mom/actions/runs/43779530099), commit `f6b29d7`: **BUILD SUCCEEDED** on Xcode 26.6. XCTest did not execute because no eligible simulator was found. Added destination/runtime diagnostics to distinguish runner availability from destination selection.
 
 [Run 43779882941](https://github.com/imanisworld/help-mom/actions/runs/43779882941) confirmed available iOS 26.2, 26.4.1 and 26.5 simulator destinations. Destination discovery now captures stderr as well as stdout from Xcode. No additional runtime installation is needed on the CI runner.
+
+## Verified CI result (2026-11-15, America/Indiana/Indianapolis)
+
+[Run 43780104771](https://github.com/imanisworld/help-mom/actions/runs/43780104771), tested commit `e1070a8`: **BUILD SUCCEEDED** and **TEST SUCCEEDED**.
+
+- Xcode 26.6, build 17F113; iPhoneSimulator26.5 SDK.
+- Test destination: iPad (A16), iOS 26.2, arm64.
+- Command: `bash Tools/build_and_test.sh` (generic simulator build, then simulator XCTest).
+- **12 tests executed, zero failures**: calendar/JSON (3), interaction/backup (4), storage/drawings (3), legacy tasks/date validation (2).
+- The unsupported-backup regression passed after the one-line compiler fix.
+- Nonblocking toolchain notices: unused AppIntents metadata extraction, signed Apple XCTest libraries not stripped, duplicate simulator architectures; existing checkout action reports Node 20 deprecation. No new frameworks were added to silence these notices.
+- Local full Xcode remains absent. Manual UI/artwork/PDF smoke tests and real iPad/Pencil testing remain outstanding; XCTest success does not certify those flows.
+- Subsequent documentation-only commits do not change the tested app or scripts.

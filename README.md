@@ -4,7 +4,7 @@
 
 An offline native SwiftUI planner by T. Crumble / Bridging the Gap.
 
-**Delivery status: source project, not a signed App Store binary.** This working copy was prepared without Xcode, an iOS Simulator, or a connected Apple device. Swift syntax parsing passed, but the source has not been type-checked, compiled or run on iOS. The XCTest tests still need to run in Xcode. Do not submit before completing the release checklist below.
+**Development status:** Simulator build and all 12 XCTest tests passed in [CI run 43780104771](https://github.com/imanisworld/help-mom/actions/runs/43780104771) using Xcode 26.6 and iPad (A16), iOS 26.2. This is not a signed App Store binary. Local simulator development requires full Xcode; manual UI and real-device/Pencil validation remain outstanding. See [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md).
 
 ## What is implemented
 
@@ -20,7 +20,7 @@ An offline native SwiftUI planner by T. Crumble / Bridging the Gap.
 
 ## Development handoff
 
-For code ownership, cross-feature data flows, persistence contracts and change rules, read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`CLAUDE.md`](CLAUDE.md). The current **working copy** also contains a Today screen, year navigation, dated tasks, confirmed carry-forward and editable backup/restore; these additions remain **unverified by Xcode**.
+For code ownership, cross-feature data flows, persistence contracts and change rules, read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`CLAUDE.md`](CLAUDE.md). The current **working copy** also contains a Today screen, year navigation, dated tasks, confirmed carry-forward and editable backup/restore; their bundled XCTest regressions now pass in CI; manual UI/device checks remain outstanding.
 
 ## Open and run on a Mac
 
@@ -34,7 +34,7 @@ For VS Code tasks, prerequisites and command-line setup, see [`docs/IMPORT_TO_GI
 
 ## Before upload — release blockers
 
-- Build and run the app on a Mac; the project is uncompiled in this delivery.
+- Complete manual simulator and real-device smoke tests; CI compilation and bundled XCTest are verified.
 - Set your signing team and production bundle identifier.
 - Publish the privacy policy and support/contact pages using your real business contact information. Set both HTTPS URLs in `ReleaseConfiguration` at the bottom of `Views.swift`.
 - Capture genuine screenshots from the running app on required device sizes. No simulated screenshots are included.
