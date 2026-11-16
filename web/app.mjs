@@ -239,4 +239,4 @@ function render(){editorCanvas=null;editorCtx=null;editorLayer=null;
  switch(screen){case 'home':return home();case 'planner':return planner();case 'today':return todayScreen();case 'journal':return journal();case 'draw':return drawSelection();case 'editor':return drawEditor();case 'gallery':return gallery();case 'backup':return backup();default:screen='home';return home()}}
 render();
 window.addEventListener('storage',ev=>{if(ev.key===STORAGE_KEY && ev.newValue!==lastStoredRaw){externalUpdate=true;showError('Your work changed in another tab. Reload this page to see those changes before editing.');render()}});
-if('serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('/sw.js').catch(()=>{});
+if('serviceWorker' in navigator && (location.protocol==='https:' || ['localhost','127.0.0.1','[::1]'].includes(location.hostname)))navigator.serviceWorker.register('/sw.js').catch(()=>{});
