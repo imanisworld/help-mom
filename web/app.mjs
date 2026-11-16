@@ -1,4 +1,5 @@
 import { STORAGE_KEY, RECOVERY_KEY, monthKey, validDate, readState, persistState, makeBackup, validateBackup, overdueTasks, moveUnfinished } from './data.mjs';
+import { FILL_SIZE, findFillRuns, includesFillPoint } from './fill.mjs';
 
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const THEMES=['Winter Stillness','Quiet Connections','Fresh Beginnings','Rain & Renewal','In Full Bloom','Lakeside Light','Coastal Calm','Golden Fields','Orchard Abundance','Autumn Color','A Quiet Pause','Winter Wonder'];
@@ -15,6 +16,7 @@ let error=stored.error;
 let screen='home';
 let selected=new Date(new Date().getFullYear(),new Date().getMonth(),1);
 let editDay=null;
+let journalDate=today();
 let drawMode='season',brushColor='#764880',brushSize=6,brushTool='pen';
 let strokes=[],redoStack=[],pointerMap=new Map(),activeStroke=null,zoom=1,panX=0,panY=0,gesture=null;
 let editorCanvas=null,editorCtx=null,editorLayer=null;
@@ -73,7 +75,21 @@ function home(){
  const main=shell('Creative Moments','Planner · Coloring Book · Journal');
  const cover=node('section','mom-cover'),coverCopy=node('div','mom-cover-copy');
  add(coverCopy,node('p','cover-caption','CREATIVE MOMENTS'),node('h1','',state.coverName||'My Creative Moments'),node('p','cover-month',monthLabel));
- coverCopy.append(btn('Change cover photo',()=>{selected=new Date(year,month-1,1);navigate('planner');document.getElementById('cover-name')?.focus()},'button secondary small'));
+ const coverInput=input('file','home-cover-file');coverInput.accept='image/jpeg,image/png,image/webp';coverInput.className='backup-input';
+ coverInput.onchange=async()=>{const file=coverInput.files?.[0];if(!file)return;coverInput.value='';
+   if(file.size>15*1024*1024){showError('Choose a photo under 15 MB.');return}
+   try{const data=await resizePhoto(file);if(commit(s=>{s.coverImage=data})){coverImg.src=data;showStatus('Cover photo saved')}}catch{showError('Could not use that photo. Try a JPG or PNG.')}
+ };
+ const coverActions=node('div','cover-edit-actions');
+ add(coverActions,btn('Change cover photo',()=>coverInput.click(),'button secondary small'),btn('Edit title',()=>{
+    const dlg=node('dialog','dialog');dlg.setAttribute('aria-label','Edit cover title');dlg.append(node('h2','','Cover title'));
+    const title=input('text','home-cover-title',state.coverName||'My Creative Moments');title.maxLength=100;
+    add(dlg,label('What should the cover say?','home-cover-title'),title);
+    const controls=node('div','dialog-actions');
+    add(controls,btn('Cancel',()=>dlg.close(),'button outline'),btn('Save title',()=>{if(commit(s=>{s.coverName=title.value.trim()||'My Creative Moments'})){dlg.close();render()}},'button'));
+    dlg.append(controls);document.body.append(dlg);dlg.addEventListener('close',()=>dlg.remove());dlg.showModal();title.focus();
+ },'button outline small'),coverInput);
+ coverCopy.append(coverActions);
  const coverImg=node('img','mom-cover-image');coverImg.src=state.coverImage||sceneSrc(month);
  coverImg.alt=state.coverImage?'Your chosen cover photograph':'Monthly coloring page artwork';
  add(cover,coverCopy,coverImg);main.append(cover);notice(main);
@@ -148,7 +164,7 @@ function home(){
  const right=node('div','mom-column');add(right,coloring,extras);
  add(workspace,left,right);main.append(workspace);
  const backup=region('panel home-backup');
- add(backup,node('p','','Your work stays on this device. Save a backup to keep it safe.'),btn('Backup & Restore',()=>navigate('backup'),'button secondary small'));
+ add(backup,node('p','','Your work stays on this device. Save a backup to keep it safe.'),btn('Print / Save PDF',()=>{selected=new Date(year,month-1,1);printMonth()},'button outline small'),btn('Backup & Restore',()=>navigate('backup'),'button secondary small'));
  main.append(backup);
  const status=node('div','status',error||'Saved on this device');status.id='save-status';status.setAttribute('role','status');main.append(status);
 }
@@ -194,7 +210,46 @@ function todayScreen(){const main=shell('Today & overdue','Your dated tasks');no
  if(!tasks.length)main.append(node('div','panel','No tasks due or overdue today.'));
  else{const groups=new Map();tasks.forEach(x=>{const due=x.task.dueDate;let arr=groups.get(due)||[];arr.push(x);groups.set(due,arr)});for(const [date,items] of groups){const box=region('panel todaybox');box.append(node('h3','',date===today()?'Due today':`Overdue · ${date}`));const list=node('div','stack');items.forEach(({month,task})=>{const record=state.tasks[month]||[];const ix=record.findIndex(t=>t===task||t.id&&t.id===task.id);if(ix<0)return;const row=node('div','task');const ck=input('checkbox');ck.checked=!!task.done;ck.setAttribute('aria-label',`Complete ${task.title}`);ck.onchange=()=>{if(commit(s=>s.tasks[month][ix].done=ck.checked))render()};const title=node('div','task-copy');add(title,node('strong','',task.title),node('small','due',`${month} planner`));add(row,ck,title,btn('Edit',()=>taskDialog(month,ix),'button secondary small'));list.append(row)});box.append(list);main.append(box)}}
  const help=region();add(help,node('p','muted','Only tasks with due dates appear here. Tasks without dates stay in their month checklist.'),btn('Open My Planner',()=>navigate('planner'),'button secondary'));main.append(help)}
-function journal(){const main=shell('My Journal','Write · Remember · Reflect');notice(main);monthChooser(main);const box=region();box.append(node('h2','',`My journal · ${currentCaption()}`));const key=currentMonth();editable(box,'Notes & inspiration','notes',key,6);editable(box,'Something I enjoyed creating','joy',key,4);editable(box,'An idea to carry forward','carry',key,4);{const status=node('div','status','Saved locally on this device');status.id='save-status';status.setAttribute('role','status');box.append(status)}main.append(box);main.append(btn('View this month in My Planner',()=>navigate('planner'),'button secondary'))}
+function journal(){
+ const main=shell('My Journal','Write about your day');notice(main);
+ const page=region('panel journal-page');
+ page.append(node('h2','','My Journal'));
+ const dateControls=node('div','journal-date-controls');
+ const date=input('date','journal-date',journalDate);
+ date.setAttribute('aria-label','Journal entry date');
+ date.onchange=()=>{if(!validDate(date.value)){showError('Choose a real calendar date.');return}journalDate=date.value;render()};
+ const changeDay=delta=>{const d=new Date(journalDate+'T12:00:00');d.setDate(d.getDate()+delta);journalDate=getDayKey(d);render()};
+ add(dateControls,btn('‹ Day',()=>changeDay(-1),'button secondary small'),date,btn('Day ›',()=>changeDay(1),'button secondary small'),btn('Today',()=>{journalDate=today();render()},'button outline small'));
+ page.append(dateControls);
+ const area=node('textarea','textarea journal-writing');area.id='journal-entry';area.rows=13;area.maxLength=1000000;
+ area.value=state.journalEntries?.[journalDate]||'';area.placeholder='Dear Journal,\n\nToday…';
+ area.setAttribute('aria-label','Journal entry');
+ area.addEventListener('input',()=>{commit(s=>{s.journalEntries[journalDate]=area.value})});
+ add(page,label('Write anything you want to remember','journal-entry'),area);
+ const status=node('div','status','Saved on this device');status.id='save-status';status.setAttribute('role','status');page.append(status);
+ main.append(page);
+ const dates=Object.keys(state.journalEntries||{}).filter(k=>validDate(k)&&state.journalEntries[k]?.trim()).sort().reverse().slice(0,12);
+ if(dates.length){
+   const recent=region('panel journal-recent');recent.append(node('h2','','Previous entries'));
+   const list=node('div','journal-dates');
+   for(const key of dates){const item=btn(new Date(key+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}),()=>{journalDate=key;render()},'button outline small');
+      if(key===journalDate)item.setAttribute('aria-current','date');
+      list.append(item);
+   }
+   recent.append(list);main.append(recent);
+ }
+ const legacy=region('journal-legacy');
+ const older=node('details','older-notes');
+ const summary=node('summary','','Older monthly notes');older.append(summary);
+ older.append(node('p','muted','Your earlier monthly notes are still here. They have not been changed.'));
+ monthChooser(older);
+ const key=currentMonth();
+ const fields=region('panel');
+ editable(fields,'Notes & inspiration','notes',key,6);
+ editable(fields,'Something I enjoyed creating','joy',key,4);
+ editable(fields,'An idea to carry forward','carry',key,4);
+ older.append(fields);legacy.append(older);main.append(legacy);
+}
 function drawSelection(){
  const main=shell('Color & Draw','Seasonal pictures and doodles');notice(main);monthChooser(main);
  main.append(node('h2','','Choose how to create'));const choices=node('div','art-options');for(const [key,title] of Object.entries(TYPES))choices.append(btn(title,()=>openEditor(key),'art-choice'));main.append(choices);
@@ -202,10 +257,32 @@ function drawSelection(){
  const choice=node('button','scene');choice.type='button';const image=node('img');image.src=sceneSrc(m);image.alt=`${MONTHS[m-1]} coloring illustration`;image.loading='lazy';add(choice,image,node('b','',MONTHS[m-1]));choice.onclick=()=>{selected=new Date(selected.getFullYear(),m-1,1);openEditor('season')};grid.append(choice)}main.append(grid);
 }
 function drawingKey(){return `${currentMonth()}-${drawMode}`}
-function openEditor(mode){drawMode=mode;const d=state.drawings[drawingKey()];strokes=Array.isArray(d?.strokes)?structuredClone(d.strokes):[];redoStack=[];zoom=1;panX=0;panY=0;screen='editor';render()}
-function drawStroke(ctx,stroke){if(!stroke||!Array.isArray(stroke.points)||!stroke.points.length)return;
- ctx.save();const erased=stroke.tool==='eraser';ctx.globalCompositeOperation=erased?'destination-out':'source-over';ctx.globalAlpha=stroke.tool==='marker'?.35:1;ctx.strokeStyle=erased?'#000':stroke.color||'#764880';ctx.lineWidth=stroke.width||6;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();const points=stroke.points;ctx.moveTo(points[0][0],points[0][1]);for(let i=1;i<points.length;i++)ctx.lineTo(points[i][0],points[i][1]);if(points.length===1)ctx.lineTo(points[0][0]+.1,points[0][1]+.1);ctx.stroke();ctx.restore()}
-function redraw(){if(!editorCtx)return;editorCtx.clearRect(0,0,1000,1000);strokes.forEach(s=>drawStroke(editorCtx,s));if(activeStroke)drawStroke(editorCtx,activeStroke)}
+function openEditor(mode){drawMode=mode;brushTool=mode==='season'?'fill':'pen';const d=state.drawings[drawingKey()];strokes=Array.isArray(d?.strokes)?structuredClone(d.strokes):[];redoStack=[];zoom=1;panX=0;panY=0;screen='editor';render()}
+function drawStroke(ctx,stroke){
+ if(!stroke||!Array.isArray(stroke.points)||!stroke.points.length)return;
+ ctx.save();
+ if(stroke.tool==='fill'){
+   ctx.fillStyle=stroke.color;
+   const ratio=1000/FILL_SIZE;
+   for(const [y,x0,x1] of stroke.runs||[])ctx.fillRect(x0*ratio,y*ratio,(x1-x0)*ratio,ratio+.06);
+   ctx.restore();return;
+ }
+ const erased=stroke.tool==='eraser';ctx.globalCompositeOperation=erased?'destination-out':'source-over';
+ ctx.globalAlpha=stroke.tool==='marker'?.35:1;ctx.strokeStyle=erased?'#000':stroke.color||'#764880';
+ ctx.lineWidth=stroke.width||6;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();
+ const points=stroke.points;ctx.moveTo(points[0][0],points[0][1]);for(let i=1;i<points.length;i++)ctx.lineTo(points[i][0],points[i][1]);
+ if(points.length===1)ctx.lineTo(points[0][0]+.1,points[0][1]+.1);ctx.stroke();ctx.restore();
+}
+function paintAll(ctx,items){
+ const fills=items.filter(s=>s.tool==='fill');
+ for(let i=0;i<fills.length;i++){
+   const seed=fills[i].points[0],sx=seed[0]*FILL_SIZE/1000,sy=seed[1]*FILL_SIZE/1000;
+   if(fills.slice(i+1).some(later=>includesFillPoint(later.runs,sx,sy)))continue;
+   drawStroke(ctx,fills[i]);
+ }
+ for(const s of items)if(s.tool!=='fill')drawStroke(ctx,s);
+}
+function redraw(){if(!editorCtx)return;editorCtx.clearRect(0,0,1000,1000);paintAll(editorCtx,strokes);if(activeStroke)drawStroke(editorCtx,activeStroke)}
 function persistDrawing(){const snapshot=structuredClone(strokes);return commit(s=>{s.drawings[drawingKey()]={strokes:snapshot,updated:Date.now()}})}
 function saveDrawing(){if(!persistDrawing())showError('Drawing was not saved. Please export or try again.');else showStatus('Drawing saved on this device')}
 function setZoom(){if(editorLayer)editorLayer.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`}
@@ -213,36 +290,78 @@ function drawEditor(){
  const main=shell(TYPES[drawMode],currentCaption());notice(main);
  const top=node('div','flex between');add(top,btn('‹ Color & Draw',()=>navigate('draw'),'button secondary'),node('span','tag','Finger · stylus · mouse'));main.append(top);
  const tools=region();const toolrow=node('div','tools');const choices=[];
- for(const [kind,text] of [['pen','Pen'],['marker','Marker'],['eraser','Eraser']]){const b=btn(text,()=>{brushTool=kind;for(const x of choices){const enabled=x.dataset.tool===kind;x.classList.toggle('active',enabled);x.setAttribute('aria-pressed',String(enabled))}},'tool-button'+(brushTool===kind?' active':''));b.dataset.tool=kind;b.setAttribute('aria-pressed',String(brushTool===kind));choices.push(b);toolrow.append(b)}
+ for(const [kind,text] of [...(drawMode==='season'?[['fill','Fill area']]:[]),['pen','Pen'],['marker','Marker'],['eraser','Eraser']]){const b=btn(text,()=>{brushTool=kind;for(const x of choices){const enabled=x.dataset.tool===kind;x.classList.toggle('active',enabled);x.setAttribute('aria-pressed',String(enabled))}},'tool-button'+(brushTool===kind?' active':''));b.dataset.tool=kind;b.setAttribute('aria-pressed',String(brushTool===kind));choices.push(b);toolrow.append(b)}
  const picker=input('color');picker.className='color';picker.value=brushColor;picker.setAttribute('aria-label','Pen color');picker.oninput=()=>brushColor=picker.value;
  const range=input('range');range.className='range';range.min='2';range.max='30';range.value=brushSize;range.setAttribute('aria-label','Brush width');range.oninput=()=>brushSize=Number(range.value);
  add(toolrow,node('span','tool-label','Color'),picker,node('span','tool-label','Size'),range);tools.append(toolrow);
  const viewport=node('div','canvas-viewport');viewport.setAttribute('aria-label','Drawing area');
- const layer=node('div','art-layer');editorLayer=layer; if(drawMode==='season'){const image=node('img');image.src=sceneSrc(selected.getMonth()+1);image.alt='Seasonal illustration for coloring';image.draggable=false;layer.append(image)}
- const canvas=node('canvas');canvas.width=1000;canvas.height=1000;canvas.setAttribute('aria-label','Draw here');layer.append(canvas);viewport.append(layer);tools.append(viewport);editorCanvas=canvas;editorCtx=canvas.getContext('2d');redraw();setZoom();
+ const layer=node('div','art-layer');editorLayer=layer;
+ let fillImageData=null;
+ if(drawMode==='season'){
+   const image=node('img');image.alt='Seasonal illustration for coloring';image.draggable=false;
+   image.onload=()=>{try{const source=document.createElement('canvas');source.width=FILL_SIZE;source.height=FILL_SIZE;
+     const ctx=source.getContext('2d',{willReadFrequently:true});ctx.drawImage(image,0,0,FILL_SIZE,FILL_SIZE);
+     fillImageData=ctx.getImageData(0,0,FILL_SIZE,FILL_SIZE)}catch{fillImageData=null}};
+   image.src=sceneSrc(selected.getMonth()+1);layer.append(image);
+ }
+ const canvas=node('canvas');canvas.width=1000;canvas.height=1000;canvas.setAttribute('aria-label','Draw here');layer.append(canvas);viewport.append(layer);tools.append(viewport);editorCanvas=canvas;editorCtx=canvas.getContext('2d');if(drawMode==='season')canvas.style.mixBlendMode='multiply';redraw();setZoom();
  const toolbar=node('div','tools');const zlabel=node('span','muted',`${Math.round(zoom*100)}%`);const updateZoom=()=>{zlabel.textContent=`${Math.round(zoom*100)}%`;setZoom()};
  add(toolbar,btn('Zoom −',()=>{zoom=Math.max(1,+(zoom-.25).toFixed(2));updateZoom()},'tool-button'),zlabel,btn('Zoom +',()=>{zoom=Math.min(3,+(zoom+.25).toFixed(2));updateZoom()},'tool-button'),btn('Reset view',()=>{zoom=1;panX=0;panY=0;updateZoom()},'tool-button'));
  tools.append(toolbar);main.append(tools);
  const actions=node('div','flex between');const undo=btn('Undo',()=>{if(!strokes.length)return;redoStack.push(strokes.pop());redraw();saveDrawing()},'button secondary');const redo=btn('Redo',()=>{if(!redoStack.length)return;strokes.push(redoStack.pop());redraw();saveDrawing()},'button secondary');
  const clear=btn('Clear drawing',()=>{if(!strokes.length)return;if(confirm('Clear all strokes in this drawing? This cannot be undone after leaving the editor.')){redoStack.push(...strokes.slice().reverse());strokes=[];redraw();saveDrawing()}},'button outline');
  add(actions,undo,redo,clear,btn('Share / Save PNG',shareDrawing));main.append(actions);
- main.append(node('p','help','Use two fingers to zoom or pan. A mouse can draw by dragging. This is a browser drawing tool, not Apple PencilKit. Seasonal coloring is freehand, not tap-to-fill.'));
+ main.append(node('p','help',drawMode==='season'?'Choose a color, select Fill area, and tap inside a space. Pen, marker and eraser are also available. Use two fingers to zoom or pan.':'Draw with your finger, stylus or mouse. Use two fingers to zoom or pan.'));
  {const status=node('div','status','Saved locally on this device');status.id='save-status';status.setAttribute('role','status');main.append(status)}
- const pointers=pointerMap; pointers.clear();let gestureStart=null;
+ const pointers=pointerMap; pointers.clear();let gestureStart=null,fillStart=null;
  function coords(ev){const r=canvas.getBoundingClientRect();return [Math.max(-100,Math.min(1100,(ev.clientX-r.left)/r.width*1000)),Math.max(-100,Math.min(1100,(ev.clientY-r.top)/r.height*1000))]}
  const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
  const center=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
- function start(ev){if(ev.button!==undefined&&ev.button!==0)return;canvas.setPointerCapture(ev.pointerId);pointers.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});if(pointers.size===1){activeStroke={tool:brushTool,color:brushColor,width:brushSize*(brushTool==='marker'?3:brushTool==='eraser'?3:1),points:[coords(ev)]};redraw()}
- if(pointers.size===2){activeStroke=null;redraw();const [a,b]=[...pointers.values()];gestureStart={distance:dist(a,b),center:center(a,b),zoom,panX,panY}}}
- function move(ev){if(!pointers.has(ev.pointerId))return;pointers.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});if(pointers.size>=2){const [a,b]=[...pointers.values()];if(!gestureStart)gestureStart={distance:dist(a,b),center:center(a,b),zoom,panX,panY};zoom=Math.max(1,Math.min(3,gestureStart.zoom*dist(a,b)/Math.max(1,gestureStart.distance)));const c=center(a,b);panX=gestureStart.panX+c.x-gestureStart.center.x;panY=gestureStart.panY+c.y-gestureStart.center.y;updateZoom();return}if(activeStroke){activeStroke.points.push(coords(ev));redraw()}}
- function end(ev){if(!pointers.has(ev.pointerId))return;const wasSingle=pointers.size===1;pointers.delete(ev.pointerId);if(wasSingle&&activeStroke){activeStroke.points.push(coords(ev));strokes.push(activeStroke);redoStack=[];activeStroke=null;redraw();saveDrawing()}if(pointers.size<2)gestureStart=null;else if(pointers.size===1){activeStroke=null;redraw()}}
- canvas.addEventListener('pointerdown',start);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',end);canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);activeStroke=null;gestureStart=null;redraw()});
+ function colorArea(point){
+   if(!fillImageData){showStatus('Picture is still loading. Try again in a moment.');return}
+   try{
+     const px=point[0]*FILL_SIZE/1000,py=point[1]*FILL_SIZE/1000;
+     const runs=findFillRuns(fillImageData,px,py);
+     const newStroke={tool:'fill',color:brushColor,width:1,points:[point],runs};
+     const result=[...strokes,newStroke];
+     if(!commit(s=>{s.drawings[drawingKey()]={strokes:structuredClone(result),updated:Date.now()}}))return;
+     strokes=result;redoStack=[];redraw();showStatus('Area colored and saved');
+   }catch(e){showStatus(e.message||'Could not fill that area. Try somewhere else.')}
+ }
+ function start(ev){
+   if(ev.button!==undefined&&ev.button!==0)return;
+   canvas.setPointerCapture(ev.pointerId);pointers.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+   if(pointers.size===1){
+     if(brushTool==='fill'){fillStart={x:ev.clientX,y:ev.clientY};activeStroke=null}
+     else{activeStroke={tool:brushTool,color:brushColor,width:brushSize*(brushTool==='marker'?3:brushTool==='eraser'?3:1),points:[coords(ev)]};redraw()}
+   }
+   if(pointers.size===2){fillStart=null;activeStroke=null;redraw();const [a,b]=[...pointers.values()];gestureStart={distance:dist(a,b),center:center(a,b),zoom,panX,panY}}
+ }
+ function move(ev){
+   if(!pointers.has(ev.pointerId))return;pointers.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+   if(pointers.size>=2){
+     const [a,b]=[...pointers.values()];if(!gestureStart)gestureStart={distance:dist(a,b),center:center(a,b),zoom,panX,panY};
+     zoom=Math.max(1,Math.min(3,gestureStart.zoom*dist(a,b)/Math.max(1,gestureStart.distance)));
+     const c=center(a,b);panX=gestureStart.panX+c.x-gestureStart.center.x;panY=gestureStart.panY+c.y-gestureStart.center.y;updateZoom();return;
+   }
+   if(activeStroke){activeStroke.points.push(coords(ev));redraw()}
+ }
+ function end(ev){
+   if(!pointers.has(ev.pointerId))return;const wasSingle=pointers.size===1;
+   pointers.delete(ev.pointerId);
+   if(wasSingle&&brushTool==='fill'&&fillStart&&Math.hypot(ev.clientX-fillStart.x,ev.clientY-fillStart.y)<22)colorArea(coords(ev));
+   if(wasSingle&&activeStroke){activeStroke.points.push(coords(ev));strokes.push(activeStroke);redoStack=[];activeStroke=null;redraw();saveDrawing()}
+   fillStart=null;if(pointers.size<2)gestureStart=null;else if(pointers.size===1){activeStroke=null;redraw()}
+ }
+ canvas.addEventListener('pointerdown',start);canvas.addEventListener('pointermove',move);
+ canvas.addEventListener('pointerup',end);
+ canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);activeStroke=null;fillStart=null;gestureStart=null;redraw()});
 }
 function compositeCanvas(key,size=1000){
  const match=key.match(/^(\d{4})-(\d{2})-(season|sketch|patterns|free)$/);if(!match)return Promise.reject(Error('Bad drawing key'));
  const [,year,month,mode]=match;const drawing=state.drawings[key];const out=document.createElement('canvas');out.width=size;out.height=size;const ctx=out.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,size,size);
- const art=document.createElement('canvas');art.width=1000;art.height=1000;const ac=art.getContext('2d');for(const s of drawing?.strokes||[])drawStroke(ac,s);
- const finish=()=>{ctx.drawImage(art,0,0,size,size);return out};
+ const art=document.createElement('canvas');art.width=1000;art.height=1000;const ac=art.getContext('2d');paintAll(ac,drawing?.strokes||[]);
+ const finish=()=>{if(mode==='season')ctx.globalCompositeOperation='multiply';ctx.drawImage(art,0,0,size,size);ctx.globalCompositeOperation='source-over';return out};
  if(mode!=='season')return Promise.resolve(finish());
  return new Promise(resolve=>{const img=new Image();img.crossOrigin='anonymous';img.onload=()=>{ctx.drawImage(img,0,0,size,size);resolve(finish())};img.onerror=()=>resolve(finish());img.src=sceneSrc(Number(month))});
 }
@@ -263,8 +382,8 @@ function backup(){
  const importBox=region();add(importBox,node('h3','','2. Restore a backup'),node('p','muted','Choose an exported Creative Moments JSON file. Nothing will be replaced until you review and confirm the import.'));
  const picker=input('file','backup-file');picker.accept='.json,application/json';picker.className='backup-input';const restore=btn('Choose backup file',()=>picker.click(),'button secondary');picker.onchange=async()=>{const file=picker.files?.[0];picker.value='';if(!file)return;if(file.size>10_000_000){alert('This file is larger than the supported 10 MB backup limit. Nothing was changed.');return}try{const raw=JSON.parse(await file.text());const checked=validateBackup(raw);if(!checked.ok){alert(`${checked.error} Nothing was changed.`);return}reviewImport(checked.data,raw.exportedAt)}catch{alert('This file could not be read as a Creative Moments backup. Nothing was changed.')}};add(importBox,restore,picker);main.append(importBox);
  let recoveryRaw=null;try{recoveryRaw=storage.getItem(RECOVERY_KEY)}catch{}if(recoveryRaw){const recovery=region('panel soft');add(recovery,node('h3','','Previous version available'),node('p','muted','A local copy was saved immediately before your last restore. You can download it or review it before recovering. It is not a substitute for an external backup.'));const controls=node('div','flex');controls.append(btn('Download previous version',()=>downloadBlob(new Blob([recoveryRaw],{type:'application/json'}),`CreativeMoments-before-restore-${today()}.json`),'button secondary'));controls.append(btn('Review previous version',()=>{try{const parsed=JSON.parse(recoveryRaw);const checked=validateBackup(makeBackup(parsed));if(!checked.ok){showError('The previous version cannot be verified. Download it for technical recovery.');return}reviewImport(checked.data,'')}catch{showError('The previous version could not be decoded. Download it for recovery.') }},'button outline'));recovery.append(controls);main.append(recovery)}
- const counts=region('panel soft');counts.append(node('h3','','What this browser currently contains'));const taskCount=Object.values(state.tasks||{}).filter(Array.isArray).reduce((n,ts)=>n+ts.length,0);const drawings=Object.values(state.drawings||{}).filter(d=>d?.strokes?.length).length;
- add(counts,node('p','',`${taskCount} task${taskCount===1?'':'s'} · ${drawings} drawing${drawings===1?'':'s'}`),node('p','muted','Journal entries and daily notes are also included in a backup. Save a new backup after important changes.'));
+ const counts=region('panel soft');counts.append(node('h3','','What this browser currently contains'));const taskCount=Object.values(state.tasks||{}).filter(Array.isArray).reduce((n,ts)=>n+ts.length,0);const drawings=Object.values(state.drawings||{}).filter(d=>d?.strokes?.length).length;const journalCount=Object.values(state.journalEntries||{}).filter(text=>text?.trim()).length;
+ add(counts,node('p','',`${taskCount} task${taskCount===1?'':'s'} · ${drawings} drawing${drawings===1?'':'s'} · ${journalCount} journal ${journalCount===1?'entry':'entries'}`),node('p','muted','Journal entries and daily notes are also included in a backup. Save a new backup after important changes.'));
  main.append(counts);
  if(storageBlocked){const rescue=region('panel warn');add(rescue,node('h3','','Read error — recovery mode'),node('p','muted','Your stored data could not be decoded. We will not overwrite it. You can download the untouched raw browser storage for technical recovery.'),btn('Download raw data',()=>{try{const raw=storage.getItem(STORAGE_KEY);downloadBlob(new Blob([raw||''],{type:'text/plain'}),'CreativeMoments-corrupt-storage.txt')}catch{alert('Browser storage is blocked. Allow site data access to recover the original bytes. Nothing was changed.')}},'button danger'));main.append(rescue)}
  {const status=node('div','status',error||'You are viewing your local data');status.id='save-status';main.append(status)}
@@ -301,7 +420,10 @@ async function printMonth(){
  const offset=(new Date(selected.getFullYear(),selected.getMonth(),1).getDay()+6)%7,count=new Date(selected.getFullYear(),selected.getMonth()+1,0).getDate();let tr=node('tr');for(let i=0;i<offset;i++)tr.append(node('td'));for(let d=1;d<=count;d++){if((offset+d-1)%7===0&&d>1){table.append(tr);tr=node('tr')}const cell=node('td');cell.append(node('strong','',String(d)));const note=state.days[`${key}-${String(d).padStart(2,'0')}`]??state.days[`${key}-${d}`];if(note)cell.append(node('small','', ' · Note'));tr.append(cell)}table.append(tr);page.append(table);
  add(page,node('h2','','Checklist'));if(!tasks.length)page.append(node('p','','No tasks added.'));else tasks.forEach(task=>page.append(node('p','',`${task.done?'☑':'☐'} ${task.title}${task.dueDate?` (due ${task.dueDate})`:''}`)));
  for(let d=1;d<=count;d++){const value=state.days[`${key}-${String(d).padStart(2,'0')}`]??state.days[`${key}-${d}`];if(!value)continue;const box=node('div','print-notes');add(box,node('h3','',`${MONTHS[selected.getMonth()]} ${d}`),node('p','',value));page.append(box)}
- for(const [prop,title] of [['notes','Notes & inspiration'],['joy','Something I enjoyed creating'],['carry','An idea to carry forward']])if(state[prop][key])add(page,node('h3','',title),node('p','',state[prop][key]));printable.append(page);
+ for(const [prop,title] of [['notes','Notes & inspiration'],['joy','Something I enjoyed creating'],['carry','An idea to carry forward']])if(state[prop][key])add(page,node('h3','',title),node('p','',state[prop][key]));
+  const daily=Object.entries(state.journalEntries||{}).filter(([day,text])=>day.startsWith(key+'-')&&text.trim()).sort(([a],[b])=>a.localeCompare(b));
+  if(daily.length){page.append(node('h2','','Journal entries'));for(const [day,text] of daily){const entry=node('div','print-notes');add(entry,node('h3','',day),node('p','',text));page.append(entry)}}
+  printable.append(page);
  const artPage=node('section','print-page');artPage.append(node('h2','',`${currentCaption()} · My drawings`));for(const mode of Object.keys(TYPES)){const k=`${key}-${mode}`;if(!state.drawings[k]?.strokes?.length)continue;const c=await compositeCanvas(k,500);const img=node('img','print-art');img.src=c.toDataURL('image/png');img.alt=TYPES[mode];add(artPage,node('h3','',TYPES[mode]),img)}printable.append(artPage);
  await Promise.all([...printable.querySelectorAll('img')].map(img=>img.decode?.().catch(()=>{})||Promise.resolve()));
  requestAnimationFrame(()=>window.print());
