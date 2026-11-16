@@ -96,6 +96,45 @@ def run(url):
         page.locator("summary").filter(has_text="Older monthly notes").click()
         assert page.get_by_label("Notes & inspiration").is_visible()
 
+        # Real tap-fill: pick a light pixel on the seasonal image and save its span mask.
+        open_home(page)
+        page.get_by_role("button", name="Color this page").click()
+        assert page.get_by_role("button", name="Fill area").is_visible()
+        page.wait_for_function("() => {const img=document.querySelector('.art-layer img');return img && img.complete && img.naturalWidth>0}")
+        seed=page.evaluate("""() => {
+            const img=document.querySelector('.art-layer img');
+            const c=document.createElement('canvas');c.width=512;c.height=512;
+            const ctx=c.getContext('2d');ctx.drawImage(img,0,0,512,512);
+            const d=ctx.getImageData(0,0,512,512).data;
+            const candidates=[[64,64],[448,64],[64,448],[448,448],[256,256],[128,256],[384,256],[256,128],[256,384]];
+            for(const [x,y] of candidates){
+                let white=true;
+                for(const [dx,dy] of [[0,0],[3,0],[-3,0],[0,3],[0,-3]]){
+                    const i=((y+dy)*512+x+dx)*4;
+                    if((d[i]+d[i+1]+d[i+2])/3<225) white=false;
+                }
+                if(white)return [x/512,y/512];
+            }
+            throw Error('No suitable white area in coloring scene');
+        }""")
+        fill_canvas=page.locator("canvas")
+        fill_canvas.scroll_into_view_if_needed()
+        bounds=fill_canvas.bounding_box()
+        fill_canvas.click(position={"x":bounds["width"]*seed[0],"y":bounds["height"]*seed[1]})
+        page.wait_for_function("() => document.querySelector('#save-status')?.textContent.includes('Area colored')")
+        saved=page.evaluate("(key) => JSON.parse(localStorage.getItem(key))", STORAGE_KEY)
+        season_keys=[k for k in saved["drawings"] if k.endswith("-season")]
+        assert season_keys and any(s.get("tool")=="fill" and len(s.get("runs",[]))>0 for s in saved["drawings"][season_keys[0]]["strokes"])
+        page.screenshot(path=str(screenshots / "coloring-mobile.png"), full_page=True)
+        page.get_by_role("button", name="Undo", exact=True).click()
+        saved=page.evaluate("(key) => JSON.parse(localStorage.getItem(key))", STORAGE_KEY)
+        assert saved["drawings"][season_keys[0]]["strokes"] == []
+        page.get_by_role("button", name="Redo", exact=True).click()
+        page.reload(wait_until="networkidle")
+        page.get_by_role("button", name="Color this page").click()
+        saved=page.evaluate("(key) => JSON.parse(localStorage.getItem(key))", STORAGE_KEY)
+        assert any(s.get("tool")=="fill" for s in saved["drawings"][season_keys[0]]["strokes"])
+
         # Drawing and saved creations: actually draw a stroke with mouse/pointer events.
         open_home(page)
         page.get_by_role("button", name=re.compile("Color & Draw")).click()
@@ -114,13 +153,13 @@ def run(url):
         assert any(key.endswith("-sketch") and data["strokes"] for key, data in saved["drawings"].items())
         open_home(page)
         page.get_by_role("button", name=re.compile("My Creations")).click()
-        assert page.locator(".saved").count() == 1
+        assert page.locator(".saved").count() == 2
         page.wait_for_function(
             "() => [...document.querySelectorAll('.saved img')].some(x => x.src.startsWith('data:image/png'))"
         )
         page.reload(wait_until="networkidle")
         page.get_by_role("button", name=re.compile("My Creations")).click()
-        assert page.locator(".saved").count() == 1
+        assert page.locator(".saved").count() == 2
 
         # Download a genuine backup, mutate journal, then restore the downloaded file.
         open_home(page)
