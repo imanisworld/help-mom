@@ -202,7 +202,7 @@ final class PlannerStore: ObservableObject {
         let data = try Data(contentsOf: source)
         let archive = try JSONDecoder().decode(EditableBackup.self, from: data)
         guard archive.formatVersion == 1, archive.planner.schemaVersion == 1 else {
-            throw CocoaError(.fileReadUnknownVersion)
+            throw CocoaError(.fileReadCorruptFile)
         }
         if let cover = archive.coverJPEG, UIImage(data: cover) == nil {
             throw CocoaError(.fileReadCorruptFile)

@@ -20,3 +20,4 @@
 - Added VS Code tasks, dependency-free macOS static validation and explicit Xcode prerequisite errors.
 - Build helper runs simulator tests by default; import helper preserves remote files.
 - Local simulator build blocked by missing full Xcode; no runtime success claimed.
+- Fixed the CI-confirmed nonexistent Cocoa error code for unsupported backup versions; rejection and saved formats remain unchanged.

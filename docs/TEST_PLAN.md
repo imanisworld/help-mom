@@ -35,3 +35,7 @@
 - Simulator launch, runtime artwork loading, manual flows and real-device/Pencil tests: **NOT RUN**.
 - Import preserves all app/test Swift files, Xcode files and artwork byte-for-byte from the newer local package; no application behavior or data format changed.
 - The existing CI workflow invokes the build helper; it now requires an actual simulator test run and cannot succeed by silently skipping XCTest.
+
+## First native CI build
+
+[Run 43779305378](https://github.com/imanisworld/help-mom/actions/runs/43779305378) used Xcode 26.6 (17F113), iPhoneSimulator26.5 SDK. Compilation failed at `Store.swift:205`: `CocoaError.Code` has no member `fileReadUnknownVersion`. Replaced it with the existing native `fileReadCorruptFile` error for unsupported backup versions; validation still rejects the backup before changing files. The existing unsupported-backup regression test covers this path. Retest pending.
