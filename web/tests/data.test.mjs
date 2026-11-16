@@ -38,3 +38,31 @@ test('legacy id-less carry-forward moves only once and gives task a stable ID',(
 test('recovery snapshot is a different key from primary state',()=>{
  assert.notEqual(RECOVERY_KEY,STORAGE_KEY);
 });
+
+test('stale tab cannot overwrite newer checklist edits without first refreshing',()=>{
+ const store=new MemoryStore();
+ const original=JSON.stringify({tasks:{'2026-11':[{title:'Original',done:false}]}});
+ store.setItem(STORAGE_KEY,original);
+ const first=readState(store),second=readState(store);
+ assert.equal(first.raw,original);
+ const a=structuredClone(first.state);a.tasks['2026-11'].push({title:'Added by tab A',done:false});
+ assert.equal(persistState(store,a,first.raw).ok,true);
+ const b=structuredClone(second.state);b.tasks['2026-11'].push({title:'Added by tab B',done:false});
+ const blocked=persistState(store,b,second.raw);
+ assert.equal(blocked.ok,false);assert.equal(blocked.conflict,true);
+ assert.equal(JSON.parse(store.getItem(STORAGE_KEY)).tasks['2026-11'][1].title,'Added by tab A');
+});
+test('stale restore is rejected before replacing work',()=>{
+ const store=new MemoryStore();store.setItem(STORAGE_KEY,JSON.stringify({notes:{'2026-11':'current'}}));
+ const start=readState(store);
+ store.setItem(STORAGE_KEY,JSON.stringify({notes:{'2026-11':'newest'}}));
+ const attempted=persistState(store,validateBackup(makeBackup({notes:{'2026-11':'older'}})).data,start.raw);
+ assert.equal(attempted.ok,false);assert.equal(attempted.conflict,true);
+ assert.match(store.getItem(STORAGE_KEY),/newest/);
+});
+test('browser storage access denial returns protected read-error state',()=>{
+ const storage={getItem(){throw Object.assign(Error('denied'),{name:'SecurityError'})}};
+ const result=readState(storage);
+ assert.match(result.error,/NOT overwritten/);
+ assert.equal(result.raw,undefined);
+});

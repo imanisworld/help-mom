@@ -27,20 +27,26 @@ export function normalizeState(input) {
   return out;
 }
 export function readState(storage) {
-  const raw = storage.getItem(STORAGE_KEY);
-  if (raw == null) return { state: DEFAULT_STATE(), error: null };
   try {
+    const raw = storage.getItem(STORAGE_KEY);
+    if (raw == null) return { state: DEFAULT_STATE(), error: null, raw: null };
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw Error('Not an object');
     const checked = validateBackup({format: BACKUP_FORMAT, version: BACKUP_VERSION, data: parsed});
     if (!checked.ok) throw Error(checked.error);
-    return { state: checked.data, error: null };
+    return { state: checked.data, error: null, raw };
   } catch {
-    return { state: DEFAULT_STATE(), error: 'Saved browser data could not be read. Existing data was NOT overwritten. Export the raw browser data before changing anything.' };
+    return { state: DEFAULT_STATE(), error: 'Saved browser data could not be read. Existing data was NOT overwritten. Do not edit until storage access is restored or raw data can be recovered.', raw: undefined };
   }
 }
-export function persistState(storage, next) {
+/** If expectedRaw is provided, reject saves based on stale browser-tab state.
+ * localStorage offers no atomic compare-and-swap; this closes the common stale-tab window.
+ */
+export function persistState(storage, next, expectedRaw = undefined) {
   try {
+    if (expectedRaw !== undefined && storage.getItem(STORAGE_KEY) !== expectedRaw) {
+      return { ok: false, conflict: true, error: 'Saved work changed in another tab. Reload before editing; nothing was overwritten.' };
+    }
     storage.setItem(STORAGE_KEY, JSON.stringify(next));
     return { ok: true, error: null };
   } catch (error) {
