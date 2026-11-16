@@ -102,12 +102,23 @@ struct ColorDrawView: View {
                 Text("Drawings stay with their month. Tap a picture again to keep drawing.")
                     .foregroundStyle(.secondary)
                 YearNavigation(year: $year)
-                Button {
-                    selection = SavedDrawing(month: PlannerMonth.forDate(Date()), section: .free)
-                } label: {
-                    Label("Free draw · this month", systemImage: "pencil.tip")
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }.buttonStyle(.bordered)
+                Text("Start creating this month").font(.headline)
+                LazyVGrid(columns: textSize.isAccessibilitySize
+                          ? [GridItem(.flexible())]
+                          : [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
+                    ForEach(DoodleSection.allCases) { section in
+                        Button {
+                            selection = SavedDrawing(month: PlannerMonth.forDate(Date()), section: section)
+                        } label: {
+                            Text(section.title)
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: 64)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+                Text("Or choose a month below to color its seasonal picture.")
+                    .font(.subheadline).foregroundStyle(.secondary)
                 LazyVGrid(columns: textSize.isAccessibilitySize
                           ? [GridItem(.flexible())]
                           : [GridItem(.adaptive(minimum: 240), spacing: 16)], spacing: 16) {
@@ -277,14 +288,9 @@ struct PlannerView: View {
                             Label("Personalize your cover", systemImage: "photo")
                         }.padding().background(.white).clipShape(RoundedRectangle(cornerRadius: 20))
                     }.buttonStyle(.plain).accessibilityLabel("Personalize cover, \(store.document.coverName)")
-                    HStack {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text("Your months").font(.system(.title2, design: .serif, weight: .bold))
-                        Spacer()
-                        Button { selectedYear -= 1 } label: { Image(systemName: "chevron.left") }
-                            .accessibilityLabel("Previous year")
-                        Text(String(selectedYear)).font(.headline.monospacedDigit()).frame(minWidth: 56)
-                        Button { selectedYear += 1 } label: { Image(systemName: "chevron.right") }
-                            .accessibilityLabel("Next year")
+                        YearNavigation(year: $selectedYear)
                     }
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 16)], spacing: 16) {
                         ForEach(1...12, id: \.self) { number in
