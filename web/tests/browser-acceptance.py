@@ -215,6 +215,16 @@ def run(url):
         assert page.get_by_role("button", name=re.compile("My Planner")).is_visible()
         context.set_offline(False)
 
+        # Direct title editing and printable dated journal do not change browser origin.
+        page.get_by_role("button", name="Edit title").click()
+        page.locator("#home-cover-title").fill("My Family Planner")
+        page.get_by_role("button", name="Save title").click()
+        assert page.get_by_role("heading", name="My Family Planner").is_visible()
+        page.reload(wait_until="networkidle")
+        assert page.get_by_role("heading", name="My Family Planner").is_visible()
+        page.get_by_role("button", name="Print / Save PDF").click()
+        page.wait_for_function("() => document.querySelector('#print-sheet')?.textContent.includes('Browser acceptance journal')")
+
         # A wider screen must recover the two-column overview.
         page.set_viewport_size({"width": 1024, "height": 768})
         page.reload(wait_until="networkidle")
@@ -225,7 +235,7 @@ def run(url):
         page.screenshot(path=str(screenshots / "home-desktop.png"), full_page=True)
 
         assert not failures, "Browser runtime errors: " + "; ".join(failures)
-        print("PASS: notebook home with real calendar/checklist/coloring, mobile/desktop layout, persistence, backup/restore, drawing/gallery, stale tabs and offline")
+        print("PASS: notebook planner, dated journal, tap-fill, undo/redo, backup/restore, cover title, PDF print, gallery, stale tabs and offline")
         context.close()
         browser.close()
 
