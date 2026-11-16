@@ -100,6 +100,8 @@ def run(url):
         open_home(page)
         page.get_by_role("button", name="Color this page").click()
         assert page.get_by_role("button", name="Fill area").is_visible()
+        page.get_by_role("button", name="Choose Blue color").click()
+        assert page.get_by_role("button", name="Choose Blue color").get_attribute("aria-pressed") == "true"
         page.wait_for_function("() => {const img=document.querySelector('.art-layer img');return img && img.complete && img.naturalWidth>0}")
         seed=page.evaluate("""() => {
             const img=document.querySelector('.art-layer img');
@@ -124,7 +126,7 @@ def run(url):
         page.wait_for_function("() => document.querySelector('#save-status')?.textContent.includes('Area colored')")
         saved=page.evaluate("(key) => JSON.parse(localStorage.getItem(key))", STORAGE_KEY)
         season_keys=[k for k in saved["drawings"] if k.endswith("-season")]
-        assert season_keys and any(s.get("tool")=="fill" and len(s.get("runs",[]))>0 for s in saved["drawings"][season_keys[0]]["strokes"])
+        assert season_keys and any(s.get("tool")=="fill" and s.get("color")=="#83bee4" and len(s.get("runs",[]))>0 for s in saved["drawings"][season_keys[0]]["strokes"])
         page.screenshot(path=str(screenshots / "coloring-mobile.png"), full_page=True)
         page.get_by_role("button", name="Undo", exact=True).click()
         saved=page.evaluate("(key) => JSON.parse(localStorage.getItem(key))", STORAGE_KEY)
