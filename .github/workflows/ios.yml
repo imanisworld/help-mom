@@ -11,7 +11,7 @@ on:
       - 'Tools/**'
       - '.github/workflows/ios.yml'
   pull_request:
-    branches: [main]
+    branches: [main, chore/creative-moments-phase1-audit]
 
 jobs:
   ios:

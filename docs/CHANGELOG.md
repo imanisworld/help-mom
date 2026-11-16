@@ -1,5 +1,13 @@
 # Change log
 
+## 2026-11-15 — Phase 3 save integrity (separate branch; Xcode tests pending)
+- Fail editable backup export if the latest planner save fails; do not silently proceed with an unpersisted state.
+- Flush pending planner changes before backup restore moves the existing files into the local recovery folder.
+- Only publish drawings to the in-memory cache/gallery after the file write succeeds.
+- Added regression cases for save failure, pending-edit recovery and drawing-write errors. No new dependencies, file formats, UI screens or migrations.
+- Native simulator build and new XCTest cases require verification before merging.
+
+
 ## 2026-11-15 — Working copy: first planning and safety improvements (unverified on iOS)
 - Added a Today screen with dated/overdue tasks and shared daily notes.
 - Added year navigation while keeping the original saved month keys and artwork.

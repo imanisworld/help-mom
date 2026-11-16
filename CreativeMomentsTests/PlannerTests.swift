@@ -153,6 +153,59 @@ final class PlannerInteractionTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("2027-01-1.drawing").path))
         XCTAssertNil(store.errorMessage)
     }
+    func testBackupRefusesExportWhenNewestPlannerEditsCannotBeSaved() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = PlannerStore(root: root)
+        let month = PlannerMonth(year: 2027, month: 1)
+        let plannerFile = root.appendingPathComponent("planner.json")
+        // A directory at the destination reliably prevents the atomic JSON write.
+        try FileManager.default.createDirectory(at: plannerFile, withIntermediateDirectories: true)
+        store.update(month) { $0.notes = "Latest edits" }
+        XCTAssertThrowsError(try store.exportEditableBackup())
+        XCTAssertNotNil(store.errorMessage)
+        XCTAssertEqual(store.record(month).notes, "Latest edits")
+        try FileManager.default.removeItem(at: plannerFile)
+        let backup = try store.exportEditableBackup()
+        defer { try? FileManager.default.removeItem(at: backup) }
+        let reopened = PlannerStore(root: root)
+        XCTAssertEqual(reopened.record(month).notes, "Latest edits")
+    }
+
+    func testRestorePreservesUnflushedEditsInRecoveryCopy() throws {
+        let parent = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: parent) }
+        let root = parent.appendingPathComponent("CreativeMoments")
+        let store = PlannerStore(root: root)
+        let month = PlannerMonth(year: 2027, month: 2)
+        store.update(month) { $0.notes = "Older backup" }
+        let backup = try store.exportEditableBackup()
+        defer { try? FileManager.default.removeItem(at: backup) }
+        store.update(month) { $0.notes = "Unsaved latest edits" }
+        try store.restoreEditableBackup(from: backup)
+        XCTAssertEqual(store.record(month).notes, "Older backup")
+        let recoveryNames = try FileManager.default.contentsOfDirectory(atPath: parent.path)
+            .filter { $0.hasPrefix("CreativeMoments-recovery-") }
+        let recoveryName = try XCTUnwrap(recoveryNames.first)
+        XCTAssertEqual(recoveryNames.count, 1)
+        let recoveryURL = parent.appendingPathComponent(recoveryName).appendingPathComponent("planner.json")
+        let recovered = try JSONDecoder().decode(PlannerDocument.self, from: Data(contentsOf: recoveryURL))
+        XCTAssertEqual(recovered.months[month.id]?.notes, "Unsaved latest edits")
+    }
+
+    func testFailedDrawingWriteDoesNotClaimSuccessfulSave() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = PlannerStore(root: root)
+        let month = PlannerMonth(year: 2027, month: 3)
+        let drawingFile = root.appendingPathComponent("2027-03-1.drawing")
+        try FileManager.default.createDirectory(at: drawingFile, withIntermediateDirectories: true)
+        let originalRevision = store.revision
+        store.saveDrawing(PKDrawing(), month: month, section: .sketch)
+        XCTAssertEqual(store.revision, originalRevision)
+        XCTAssertNotNil(store.errorMessage)
+    }
+
 }
 
 @MainActor
