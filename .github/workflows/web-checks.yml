@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: '22'
       - name: Validate JavaScript syntax
-        run: node --check web/app.mjs && node --check web/data.mjs && node --check web/sw.js
+        run: node --check web/app.mjs && node --check web/data.mjs && node --check web/fill.mjs && node --check web/sw.js
       - name: Run web regression tests
         working-directory: web
         run: node --test tests/*.test.mjs
