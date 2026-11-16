@@ -48,13 +48,12 @@ function shell(title,subtitle){
  if(screen!=='home')hd.append(btn('‹ Home',()=>navigate('home'),'back'));
  add(hd,node('div','logo','CM'));
  const brand=node('div','app-title');add(brand,node('strong','',title),node('small','',subtitle||'Plan · Create · Reflect'));hd.append(brand);
- hd.append(node('span','pill','MY SPACE'));root.append(hd);
+ root.append(hd);
  const main=node('main','body');main.id='main';root.append(main);app.append(root);
  return main;
 }
 function notice(main){
- const panel=node('div','notice');panel.textContent='Your entries stay in this browser on this device. Use Backup & Restore to keep a separate copy. Nothing syncs automatically.';
- main.append(panel);
+
  if(error){const e=node('div','notice error',error);e.setAttribute('role','alert');main.append(e)}
  if(externalUpdate)main.append(btn('Reload latest saved work',()=>location.reload(),'button secondary'));
 }
@@ -69,16 +68,89 @@ function editable(parent,title,field,key,rows=4){
  add(wrap,label(title,id),ta);parent.append(wrap);return ta;
 }
 function home(){
- const main=shell('Creative Moments','Your space to plan, create, and reflect');
- const intro=node('section','home-intro');add(intro,node('p','eyebrow','YOUR CREATIVE SPACE'),node('h1','','Creative Moments'),node('p','lead','A calm place to plan your days, make something beautiful, and keep your ideas.'));main.append(intro);notice(main);main.append(node('h2','section-label','What would you like to do?'));
- const grid=node('div','cards');[
- ['▦','My Planner','Calendars, today, and checklists','planner'],
- ['✎','Color & Draw','Seasonal art and freehand drawing','draw'],
- ['▤','My Journal','Notes, joy, and reflections','journal'],
- ['▧','My Creations','Find and reopen your drawings','gallery']
- ].forEach(([symbol,title,caption,go])=>{const c=node('button','card');c.type='button';add(c,node('span','symbol',symbol),node('b','',title),node('span','',caption));c.onclick=()=>navigate(go);grid.append(c)});main.append(grid);
- const footer=region('panel soft');add(footer,node('h3','','Your work, your space'),node('p','muted','No sign-in. Save a backup to keep your writing and artwork safe.'),btn('Backup & Restore',()=>navigate('backup'),'button secondary'));main.append(footer);
- {const status=node('div','status',error||'Saved locally on this device');status.id='save-status';main.append(status)}
+ const now=new Date(),year=now.getFullYear(),month=now.getMonth()+1,key=monthKey(year,month);
+ const monthLabel=MONTHS[month-1]+' '+year;
+ const main=shell('Creative Moments','Planner · Coloring Book · Journal');
+ const cover=node('section','mom-cover'),coverCopy=node('div','mom-cover-copy');
+ add(coverCopy,node('p','cover-caption','CREATIVE MOMENTS'),node('h1','',state.coverName||'My Creative Moments'),node('p','cover-month',monthLabel));
+ coverCopy.append(btn('Change cover photo',()=>{selected=new Date(year,month-1,1);navigate('planner');document.getElementById('cover-name')?.focus()},'button secondary small'));
+ const coverImg=node('img','mom-cover-image');coverImg.src=state.coverImage||sceneSrc(month);
+ coverImg.alt=state.coverImage?'Your chosen cover photograph':'Monthly coloring page artwork';
+ add(cover,coverCopy,coverImg);main.append(cover);notice(main);
+ const tabs=node('nav','book-tabs');tabs.setAttribute('aria-label','Sections');
+ for(const [title,to] of [['My Planner','planner'],['Color & Draw','draw'],['My Journal','journal'],['My Creations','gallery']]){
+   tabs.append(btn(title,()=>{selected=new Date(year,month-1,1);navigate(to)},'book-tab'));
+ }
+ main.append(tabs);
+ const workspace=node('div','mom-workspace');
+ const plannerBox=region('panel calendar-sheet');
+ const monthHeader=node('div','sheet-heading');
+ add(monthHeader,node('h2','',monthLabel),btn('Full calendar',()=>{selected=new Date(year,month-1,1);navigate('planner')},'button outline small'));
+ plannerBox.append(monthHeader);
+ const grid=node('div','weekgrid mom-month-grid');
+ for(const dayName of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])grid.append(node('span','weekday',dayName));
+ const offset=(new Date(year,month-1,1).getDay()+6)%7;
+ for(let i=0;i<offset;i++)grid.append(node('span','calendar-blank'));
+ const tasksForMonth=Array.isArray(state.tasks[key])?state.tasks[key]:[];
+ const nDays=new Date(year,month,0).getDate();
+ for(let day=1;day<=nDays;day++){
+   const k=key+'-'+String(day).padStart(2,'0'),legacy=key+'-'+day;
+   const marked=!!(state.days[k]||state.days[legacy]||tasksForMonth.some(t=>t.dueDate===k));
+   const dayButton=btn(String(day),()=>{selected=new Date(year,month-1,1);screen='planner';editDay=day;render();window.scrollTo({top:0,behavior:'instant'})},'day'+(k===today()?' today':'')+(marked?' marked':''));
+   dayButton.setAttribute('aria-label','Open '+MONTHS[month-1]+' '+day+' in planner');
+   grid.append(dayButton);
+ }
+ plannerBox.append(grid);
+ plannerBox.append(node('p','sheet-hint','Tap a date to write a note.'));
+ const checklist=region('panel home-checklist');
+ checklist.append(node('h2','','Checklist'));
+ const list=node('div','stack home-checklist-items');
+ function refreshList(){
+   list.replaceChildren();
+   const all=Array.isArray(state.tasks[key])?state.tasks[key]:[];
+   if(!all.length)list.append(node('p','muted','Nothing on your list yet.'));
+   for(const [index,task] of all.slice(0,4).entries()){
+     const labelRow=node('label','task home-task');
+     const ck=input('checkbox');ck.checked=!!task.done;ck.setAttribute('aria-label','Complete '+task.title);
+     ck.onchange=()=>{if(commit(s=>{s.tasks[key][index].done=ck.checked}))refreshList()};
+     const title=node('span','task-copy'+(task.done?' done':''),task.title);
+     if(task.dueDate)title.append(node('small','due','Due '+task.dueDate));
+     add(labelRow,ck,title);list.append(labelRow);
+   }
+   if(all.length>4)list.append(node('p','muted',(all.length-4)+' more tasks in the planner'));
+ }
+ refreshList();checklist.append(list);
+ const quick=node('div','home-new-task');
+ const field=input('text','home-new-task');field.placeholder='Add a task';field.maxLength=2000;field.setAttribute('aria-label','New checklist task');
+ const addTask=()=>{const title=field.value.trim();if(!title)return;
+   if(commit(s=>{if(!Array.isArray(s.tasks[key]))s.tasks[key]=[];s.tasks[key].push({id:uniqueID(),title,done:false,dueDate:''})})){field.value='';refreshList()}
+ };
+ field.addEventListener('keydown',e=>{if(e.key==='Enter')addTask()});
+ add(quick,field,btn('Add task',addTask,'button'));checklist.append(quick);
+ checklist.append(btn('See all tasks',()=>{selected=new Date(year,month-1,1);navigate('planner')},'button outline small'));
+ const left=node('div','mom-column');add(left,plannerBox,checklist);
+ const coloring=region('panel home-coloring');
+ const artHeader=node('div','sheet-heading');
+ add(artHeader,node('h2','','Coloring Page'),node('span','small-label',MONTHS[month-1]));
+ coloring.append(artHeader);
+ const picture=node('button','home-art-preview');picture.type='button';picture.setAttribute('aria-label','Color monthly picture');
+ const img=node('img');img.src=sceneSrc(month);img.alt=MONTHS[month-1]+' seasonal coloring page';
+ picture.append(img);picture.onclick=()=>{selected=new Date(year,month-1,1);openEditor('season')};
+ coloring.append(picture);
+ const colorButtons=node('div','home-color-actions');
+ add(colorButtons,btn('Color this page',()=>{selected=new Date(year,month-1,1);openEditor('season')},'button'),btn('All 12 pages',()=>{selected=new Date(year,month-1,1);navigate('draw')},'button outline'));
+ coloring.append(colorButtons);
+ const extras=node('div','home-extras');
+ const journal=region('panel home-extras-item');add(journal,node('h2','','Journal'),node('p','muted','Notes and memories'),btn('Open journal',()=>{selected=new Date(year,month-1,1);navigate('journal')},'button outline small'));
+ const drawings=Object.values(state.drawings||{}).filter(x=>x?.strokes?.length).length;
+ const gallery=region('panel home-extras-item');add(gallery,node('h2','','My Drawings'),node('p','muted',drawings+' saved'),btn('See drawings',()=>navigate('gallery'),'button outline small'));
+ add(extras,journal,gallery);
+ const right=node('div','mom-column');add(right,coloring,extras);
+ add(workspace,left,right);main.append(workspace);
+ const backup=region('panel home-backup');
+ add(backup,node('p','','Your work stays on this device. Save a backup to keep it safe.'),btn('Backup & Restore',()=>navigate('backup'),'button secondary small'));
+ main.append(backup);
+ const status=node('div','status',error||'Saved on this device');status.id='save-status';status.setAttribute('role','status');main.append(status);
 }
 function photoCover(main){
  const panel=region();panel.append(node('h3','','My personalized cover'));
@@ -93,7 +165,7 @@ async function resizePhoto(file){return new Promise((resolve,reject)=>{const obj
 function planner(){
  const main=shell('My Planner','Calendars · Checklists · Today');notice(main);
  const top=node('div','flex');add(top,btn('Today & overdue',()=>navigate('today'),'button'),btn('Backup & Restore',()=>navigate('backup'),'button secondary'));main.append(top);
- photoCover(main);monthChooser(main);
+ monthChooser(main);
  const record=currentMonth();const panel=region();panel.append(node('h2','',`My checklist · ${MONTHS[selected.getMonth()]}`));
  const itemList=node('div','stack');renderTaskList(itemList,record);
  const addform=node('div','field');const newTitle=input('text','new-task');newTitle.placeholder='New task';newTitle.maxLength=2000;
@@ -101,15 +173,15 @@ function planner(){
  const entry=node('div','entry');const addTask=()=>{const title=newTitle.value.trim();if(!title)return;const date=due.value;if(date&&!validDate(date)){alert('Please choose a valid date.');return}if(commit(s=>{if(!Array.isArray(s.tasks[record]))s.tasks[record]=[];s.tasks[record].push({id:uniqueID(),title,done:false,dueDate:date})})){newTitle.value='';due.value='';renderTaskList(itemList,record)}};
  newTitle.addEventListener('keydown',e=>{if(e.key==='Enter')addTask()});add(entry,newTitle,due,btn('Add',addTask));add(addform,label('Add a task (date optional)','new-task'),entry);add(panel,itemList,addform);
  const prevDate=new Date(selected.getFullYear(),selected.getMonth()-1,1),prevKey=monthKey(prevDate.getFullYear(),prevDate.getMonth()+1);const outstanding=(state.tasks[prevKey]||[]).filter(t=>!t.done).length;
- if(outstanding){const carry=btn(`Move ${outstanding} unfinished task${outstanding===1?'':'s'} from ${MONTHS[prevDate.getMonth()]}`,()=>{if(!confirm(`Move unfinished tasks from ${MONTHS[prevDate.getMonth()]} into ${currentCaption()}? Completed tasks will stay behind.`))return;const count=outstanding;if(commit(s=>moveUnfinished(s,record))){render();showStatus(`Moved ${count} task${count===1?'':'s'}`)}},'button outline');panel.append(carry)}main.append(panel);
+ if(outstanding){const carry=btn(`Move ${outstanding} unfinished task${outstanding===1?'':'s'} from ${MONTHS[prevDate.getMonth()]}`,()=>{if(!confirm(`Move unfinished tasks from ${MONTHS[prevDate.getMonth()]} into ${currentCaption()}? Completed tasks will stay behind.`))return;const count=outstanding;if(commit(s=>moveUnfinished(s,record))){render();showStatus(`Moved ${count} task${count===1?'':'s'}`)}},'button outline');panel.append(carry)}
  const cal=region();cal.append(node('h2','','Calendar notes'));const days=node('div','weekgrid');
  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d=>days.append(node('div','weekday',d)));
  const first=(new Date(selected.getFullYear(),selected.getMonth(),1).getDay()+6)%7;for(let b=0;b<first;b++)days.append(node('span'));
  const maxDays=new Date(selected.getFullYear(),selected.getMonth()+1,0).getDate();for(let day=1;day<=maxDays;day++){
  const k=`${record}-${String(day).padStart(2,'0')}`;const oldK=`${record}-${day}`;
- const d=btn(String(day),()=>{editDay=day;render()},'day'+(state.days[k]||state.days[oldK]?' marked':'')+(k===today()?' today':''));d.setAttribute('aria-label',`Edit notes for ${MONTHS[selected.getMonth()]} ${day}`);days.append(d)}cal.append(days);main.append(cal);
+ const d=btn(String(day),()=>{editDay=day;render()},'day'+(state.days[k]||state.days[oldK]?' marked':'')+(k===today()?' today':''));d.setAttribute('aria-label',`Edit notes for ${MONTHS[selected.getMonth()]} ${day}`);days.append(d)}cal.append(days);main.append(cal);main.append(panel);
  if(editDay){const daypanel=region();const key=`${record}-${String(editDay).padStart(2,'0')}`;const legacyKey=`${record}-${editDay}`;const area=node('textarea','textarea');area.value=state.days[key]??state.days[legacyKey]??'';area.setAttribute('aria-label','Notes for selected day');area.oninput=()=>commit(s=>{s.days[key]=area.value});add(daypanel,node('h3','',`${MONTHS[selected.getMonth()]} ${editDay}`),area,btn('Done',()=>{editDay=null;render()},'button secondary'));main.append(daypanel);requestAnimationFrame(()=>daypanel.scrollIntoView({block:'nearest',behavior:'smooth'}))}
- const focus=region();focus.append(node('h2','','Monthly focus'));editable(focus,'What matters this month?', 'focus',record);main.append(focus);
+ const focus=region();focus.append(node('h2','','Monthly focus'));editable(focus,'What matters this month?', 'focus',record);main.append(focus);photoCover(main);
  const actions=node('div','flex print-actions');add(actions,btn('Print / Save PDF',printMonth,'button secondary'),btn('Write in My Journal',()=>navigate('journal'),'button outline'));main.append(actions);
  {const status=node('div','status','Saved locally on this device');status.id='save-status';status.setAttribute('role','status');main.append(status)}
 }
@@ -122,7 +194,7 @@ function todayScreen(){const main=shell('Today & overdue','Your dated tasks');no
  if(!tasks.length)main.append(node('div','panel','No tasks due or overdue today.'));
  else{const groups=new Map();tasks.forEach(x=>{const due=x.task.dueDate;let arr=groups.get(due)||[];arr.push(x);groups.set(due,arr)});for(const [date,items] of groups){const box=region('panel todaybox');box.append(node('h3','',date===today()?'Due today':`Overdue · ${date}`));const list=node('div','stack');items.forEach(({month,task})=>{const record=state.tasks[month]||[];const ix=record.findIndex(t=>t===task||t.id&&t.id===task.id);if(ix<0)return;const row=node('div','task');const ck=input('checkbox');ck.checked=!!task.done;ck.setAttribute('aria-label',`Complete ${task.title}`);ck.onchange=()=>{if(commit(s=>s.tasks[month][ix].done=ck.checked))render()};const title=node('div','task-copy');add(title,node('strong','',task.title),node('small','due',`${month} planner`));add(row,ck,title,btn('Edit',()=>taskDialog(month,ix),'button secondary small'));list.append(row)});box.append(list);main.append(box)}}
  const help=region();add(help,node('p','muted','Only tasks with due dates appear here. Tasks without dates stay in their month checklist.'),btn('Open My Planner',()=>navigate('planner'),'button secondary'));main.append(help)}
-function journal(){const main=shell('My Journal','Write · Remember · Reflect');notice(main);monthChooser(main);const box=region();box.append(node('h2','',`A quiet moment · ${THEMES[selected.getMonth()]}`));const key=currentMonth();editable(box,'Notes & inspiration','notes',key,6);editable(box,'Something I enjoyed creating','joy',key,4);editable(box,'An idea to carry forward','carry',key,4);{const status=node('div','status','Saved locally on this device');status.id='save-status';status.setAttribute('role','status');box.append(status)}main.append(box);main.append(btn('View this month in My Planner',()=>navigate('planner'),'button secondary'))}
+function journal(){const main=shell('My Journal','Write · Remember · Reflect');notice(main);monthChooser(main);const box=region();box.append(node('h2','',`My journal · ${currentCaption()}`));const key=currentMonth();editable(box,'Notes & inspiration','notes',key,6);editable(box,'Something I enjoyed creating','joy',key,4);editable(box,'An idea to carry forward','carry',key,4);{const status=node('div','status','Saved locally on this device');status.id='save-status';status.setAttribute('role','status');box.append(status)}main.append(box);main.append(btn('View this month in My Planner',()=>navigate('planner'),'button secondary'))}
 function drawSelection(){
  const main=shell('Color & Draw','Seasonal pictures and doodles');notice(main);monthChooser(main);
  main.append(node('h2','','Choose how to create'));const choices=node('div','art-options');for(const [key,title] of Object.entries(TYPES))choices.append(btn(title,()=>openEditor(key),'art-choice'));main.append(choices);
