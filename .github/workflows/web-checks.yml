@@ -39,3 +39,11 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Test real browser workflows in mobile viewport
         run: python web/tests/browser-acceptance.py
+      - name: Upload UI review screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: creative-moments-ui-review
+          path: web/test-artifacts/*.png
+          if-no-files-found: ignore
+          retention-days: 14
