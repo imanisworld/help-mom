@@ -13,6 +13,9 @@ if [[ -z "${DESTINATION:-}" ]]; then
   DESTINATION="$(xcodebuild -project CreativeMoments.xcodeproj -scheme CreativeMoments -showdestinations | sed -nE '/platform:iOS Simulator/ { /placeholder/d; s/.*id:([^,}]+).*/platform=iOS Simulator,id=\1/p; }' | sed -n '1p')"
 fi
 if [[ -z "$DESTINATION" ]]; then
+  xcodebuild -project CreativeMoments.xcodeproj -scheme CreativeMoments -showdestinations
+  xcrun simctl list devices available
+  xcrun simctl list runtimes
   echo 'BLOCKED: No eligible iOS simulator. Install a runtime/device in Xcode or set DESTINATION.' >&2
   exit 2
 fi
