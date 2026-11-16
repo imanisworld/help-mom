@@ -413,3 +413,27 @@ p{line-height:1.55}.app{max-width:1050px}
  .journal-writing{min-height:390px;font-size:17px}
  .cover-edit-actions .button{flex:0 1 auto}
 }
+
+
+/* Eight large, labeled-for-screen-readers colors for finger-based coloring. */
+.color-palette{
+ display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+ padding:13px 0 16px;margin:2px 0 10px;
+}
+.color-swatch{
+ display:block;flex:0 0 auto;
+ width:44px;height:44px;min-width:44px;min-height:44px;
+ border-radius:50%;
+ border:2px solid #fff;
+ box-shadow:0 0 0 1px #bcb0b9,0 2px 4px #302c3415;
+ cursor:pointer;
+}
+.color-swatch[aria-pressed=true]{
+ outline:3px solid #604369;outline-offset:3px;
+ box-shadow:0 0 0 1px #4f3557;
+}
+.color-swatch:focus-visible{outline:3px solid #65376e;outline-offset:4px}
+@media(max-width:400px){
+ .color-palette{gap:9px}
+ .color-swatch{width:43px;height:43px;min-width:43px;min-height:43px}
+}
