@@ -15,7 +15,7 @@ done
   { echo 'STOP: CreativeMoments.xcodeproj not found. Run from the extracted Xcode project.' >&2; exit 1; }
 [[ -f "$ROOT/CreativeMoments/CreativeMomentsApp.swift" ]] ||
   { echo 'STOP: App source code not found.' >&2; exit 1; }
-for n in {01..12}; do
+for n in 01 02 03 04 05 06 07 08 09 10 11 12; do
   [[ -f "$ROOT/CreativeMoments/Resources/Scenes/scene-$n.png" ]] ||
     { echo "STOP: Missing artwork scene-$n.png" >&2; exit 1; }
 done
