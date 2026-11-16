@@ -25,16 +25,16 @@ struct HomeView: View {
                               : [GridItem(.adaptive(minimum: 300), spacing: 16)], spacing: 16) {
                         NavigationLink { PlannerView() } label: {
                             HomeCard(title: "My Planner", subtitle: "View and edit plans", symbol: "calendar", color: plum)
-                        }
+                        }.accessibilityIdentifier("home.planner")
                         NavigationLink { ColorDrawView() } label: {
                             HomeCard(title: "Color & Draw", subtitle: "Make something", symbol: "paintpalette", color: Color(red: 0.28, green: 0.43, blue: 0.35))
-                        }
+                        }.accessibilityIdentifier("home.draw")
                         NavigationLink { JournalView() } label: {
                             HomeCard(title: "My Journal", subtitle: "Write or reflect", symbol: "book.closed", color: Color(red: 0.48, green: 0.32, blue: 0.23))
-                        }
+                        }.accessibilityIdentifier("home.journal")
                         NavigationLink { CreationsView() } label: {
                             HomeCard(title: "My Creations", subtitle: "See saved work", symbol: "photo.on.rectangle.angled", color: Color(red: 0.29, green: 0.37, blue: 0.53))
-                        }
+                        }.accessibilityIdentifier("home.creations")
                     }.buttonStyle(.plain)
                     NavigationLink { BackupView() } label: {
                         Label("Back up your work", systemImage: "externaldrive")
@@ -101,13 +101,24 @@ struct ColorDrawView: View {
                 Text("Choose a picture and make it your own.").font(.title3)
                 Text("Drawings stay with their month. Tap a picture again to keep drawing.")
                     .foregroundStyle(.secondary)
+                Text("Start creating this month").font(.headline)
+                LazyVGrid(columns: textSize.isAccessibilitySize
+                          ? [GridItem(.flexible())]
+                          : [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
+                    ForEach(DoodleSection.allCases) { section in
+                        Button {
+                            selection = SavedDrawing(month: PlannerMonth.forDate(Date()), section: section)
+                        } label: {
+                            Text(section.title)
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: 64)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+                Text("Or choose a month below to color its seasonal picture.")
+                    .font(.subheadline).foregroundStyle(.secondary)
                 YearNavigation(year: $year)
-                Button {
-                    selection = SavedDrawing(month: PlannerMonth.forDate(Date()), section: .free)
-                } label: {
-                    Label("Free draw · this month", systemImage: "pencil.tip")
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }.buttonStyle(.bordered)
                 LazyVGrid(columns: textSize.isAccessibilitySize
                           ? [GridItem(.flexible())]
                           : [GridItem(.adaptive(minimum: 240), spacing: 16)], spacing: 16) {
@@ -277,14 +288,9 @@ struct PlannerView: View {
                             Label("Personalize your cover", systemImage: "photo")
                         }.padding().background(.white).clipShape(RoundedRectangle(cornerRadius: 20))
                     }.buttonStyle(.plain).accessibilityLabel("Personalize cover, \(store.document.coverName)")
-                    HStack {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text("Your months").font(.system(.title2, design: .serif, weight: .bold))
-                        Spacer()
-                        Button { selectedYear -= 1 } label: { Image(systemName: "chevron.left") }
-                            .accessibilityLabel("Previous year")
-                        Text(String(selectedYear)).font(.headline.monospacedDigit()).frame(minWidth: 56)
-                        Button { selectedYear += 1 } label: { Image(systemName: "chevron.right") }
-                            .accessibilityLabel("Next year")
+                        YearNavigation(year: $selectedYear)
                     }
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 16)], spacing: 16) {
                         ForEach(1...12, id: \.self) { number in
