@@ -5,7 +5,9 @@ const THEMES=['Winter Stillness','Quiet Connections','Fresh Beginnings','Rain & 
 const TYPES={season:'Color the season',sketch:'Sketch an idea',patterns:'Explore patterns',free:'Free doodle'};
 const getDayKey=date=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 const today=()=>getDayKey(new Date());
-const stored=readState(localStorage);
+const storage=(()=>{try{return globalThis.localStorage}catch{return {getItem(){throw Error('Storage access denied')},setItem(){throw Error('Storage access denied')}}}})();
+const stored=readState(storage);
+let lastStoredRaw=stored.raw;
 let externalUpdate=false;
 let state=stored.state;
 let storageBlocked=!!stored.error;
@@ -33,9 +35,9 @@ function commit(change){
  if(externalUpdate){showError('This planner changed in another tab. Reload the page before editing to prevent overwriting those changes.');return false}
  const next=structuredClone(state);
  try{change(next)}catch(e){showError('The change could not be applied.');return false}
- const result=persistState(localStorage,next);
- if(!result.ok){showError(result.error);return false}
- state=next;error=null;const status=document.getElementById('save-status');if(status){status.textContent='Saved on this device';status.className='status'}return true;
+ const result=persistState(storage,next,lastStoredRaw);
+ if(!result.ok){if(result.conflict)externalUpdate=true;showError(result.error);return false}
+ state=next;lastStoredRaw=JSON.stringify(next);error=null;const status=document.getElementById('save-status');if(status){status.textContent='Saved on this device';status.className='status'}return true;
 }
 function showError(message){error=message;const status=document.getElementById('save-status');if(status){status.textContent=message;status.className='status bad'}else alert(message)}
 function showStatus(message){const status=document.getElementById('save-status');if(status){status.textContent=message;status.className='status'}}
@@ -188,11 +190,11 @@ function backup(){
  const saveBox=region();add(saveBox,node('h3','','1. Export your backup'),node('p','muted','Downloads a JSON file containing your plans, journal entries, cover photo, and editable drawings. Keep it in Files, iCloud Drive, or another safe place.'),btn('Download complete backup',downloadBackup));main.append(saveBox);
  const importBox=region();add(importBox,node('h3','','2. Restore a backup'),node('p','muted','Choose an exported Creative Moments JSON file. Nothing will be replaced until you review and confirm the import.'));
  const picker=input('file','backup-file');picker.accept='.json,application/json';picker.className='backup-input';const restore=btn('Choose backup file',()=>picker.click(),'button secondary');picker.onchange=async()=>{const file=picker.files?.[0];picker.value='';if(!file)return;if(file.size>10_000_000){alert('This file is larger than the supported 10 MB backup limit. Nothing was changed.');return}try{const raw=JSON.parse(await file.text());const checked=validateBackup(raw);if(!checked.ok){alert(`${checked.error} Nothing was changed.`);return}reviewImport(checked.data,raw.exportedAt)}catch{alert('This file could not be read as a Creative Moments backup. Nothing was changed.')}};add(importBox,restore,picker);main.append(importBox);
- const recoveryRaw=localStorage.getItem(RECOVERY_KEY);if(recoveryRaw){const recovery=region('panel soft');add(recovery,node('h3','','Previous version available'),node('p','muted','A local copy was saved immediately before your last restore. You can download it or review it before recovering. It is not a substitute for an external backup.'));const controls=node('div','flex');controls.append(btn('Download previous version',()=>downloadBlob(new Blob([recoveryRaw],{type:'application/json'}),`CreativeMoments-before-restore-${today()}.json`),'button secondary'));controls.append(btn('Review previous version',()=>{try{const parsed=JSON.parse(recoveryRaw);const checked=validateBackup(makeBackup(parsed));if(!checked.ok){showError('The previous version cannot be verified. Download it for technical recovery.');return}reviewImport(checked.data,'')}catch{showError('The previous version could not be decoded. Download it for recovery.') }},'button outline'));recovery.append(controls);main.append(recovery)}
+ let recoveryRaw=null;try{recoveryRaw=storage.getItem(RECOVERY_KEY)}catch{}if(recoveryRaw){const recovery=region('panel soft');add(recovery,node('h3','','Previous version available'),node('p','muted','A local copy was saved immediately before your last restore. You can download it or review it before recovering. It is not a substitute for an external backup.'));const controls=node('div','flex');controls.append(btn('Download previous version',()=>downloadBlob(new Blob([recoveryRaw],{type:'application/json'}),`CreativeMoments-before-restore-${today()}.json`),'button secondary'));controls.append(btn('Review previous version',()=>{try{const parsed=JSON.parse(recoveryRaw);const checked=validateBackup(makeBackup(parsed));if(!checked.ok){showError('The previous version cannot be verified. Download it for technical recovery.');return}reviewImport(checked.data,'')}catch{showError('The previous version could not be decoded. Download it for recovery.') }},'button outline'));recovery.append(controls);main.append(recovery)}
  const counts=region('panel soft');counts.append(node('h3','','What this browser currently contains'));const taskCount=Object.values(state.tasks||{}).filter(Array.isArray).reduce((n,ts)=>n+ts.length,0);const drawings=Object.values(state.drawings||{}).filter(d=>d?.strokes?.length).length;
  add(counts,node('p','',`${taskCount} task${taskCount===1?'':'s'} · ${drawings} drawing${drawings===1?'':'s'}`),node('p','muted','Journal entries and daily notes are also included in a backup. Save a new backup after important changes.'));
  main.append(counts);
- if(storageBlocked){const rescue=region('panel warn');add(rescue,node('h3','','Read error — recovery mode'),node('p','muted','Your stored data could not be decoded. We will not overwrite it. You can download the untouched raw browser storage for technical recovery.'),btn('Download raw data',()=>{const raw=localStorage.getItem(STORAGE_KEY);downloadBlob(new Blob([raw||''],{type:'text/plain'}),'CreativeMoments-corrupt-storage.txt')},'button danger'));main.append(rescue)}
+ if(storageBlocked){const rescue=region('panel warn');add(rescue,node('h3','','Read error — recovery mode'),node('p','muted','Your stored data could not be decoded. We will not overwrite it. You can download the untouched raw browser storage for technical recovery.'),btn('Download raw data',()=>{try{const raw=storage.getItem(STORAGE_KEY);downloadBlob(new Blob([raw||''],{type:'text/plain'}),'CreativeMoments-corrupt-storage.txt')}catch{alert('Browser storage is blocked. Allow site data access to recover the original bytes. Nothing was changed.')}},'button danger'));main.append(rescue)}
  {const status=node('div','status',error||'You are viewing your local data');status.id='save-status';main.append(status)}
 }
 function downloadBackup(){
@@ -207,9 +209,14 @@ function reviewImport(next,exportedAt){
  const actions=node('div','dialog-actions');add(actions,btn('Cancel',()=>dlg.close(),'button outline'),btn('Replace my browser data',()=>{
  if(!confirm('Final confirmation: replace every current note, task, cover and drawing with this backup?'))return;
  if(storageBlocked){alert('Current storage has a read error. Please export the raw data before restoring.');return}
+ if(externalUpdate){alert('Saved work changed in another tab. Reload before restoring. Nothing was replaced.');return}
  // Preserve a local pre-restore recovery snapshot BEFORE writing the replacement.
- try{const previous=localStorage.getItem(STORAGE_KEY);if(previous!==null)localStorage.setItem(RECOVERY_KEY,previous)}catch{alert('Could not make the pre-restore recovery copy. Download a backup of current data before replacing it. Nothing changed.');return}
- const result=persistState(localStorage,next);if(!result.ok){alert(result.error+' Nothing was replaced.');return}state=next;error=null;dlg.close();navigate('home');alert('Backup restored. Your previous browser data is also retained as a local recovery copy.')
+ try{const previous=storage.getItem(STORAGE_KEY);
+   if(previous!==lastStoredRaw){externalUpdate=true;alert('Saved work changed in another tab. Reload before restoring. Nothing was replaced.');return}
+   if(previous!==null)storage.setItem(RECOVERY_KEY,previous)
+ }catch{alert('Could not make the pre-restore recovery copy. Download a backup of current data before replacing it. Nothing changed.');return}
+ const result=persistState(storage,next,lastStoredRaw);if(!result.ok){if(result.conflict)externalUpdate=true;alert(result.error+' Nothing was replaced.');return}
+ state=next;lastStoredRaw=JSON.stringify(next);error=null;dlg.close();navigate('home');alert('Backup restored. Your previous browser data is also retained as a local recovery copy.')
  },'button danger'));
  dlg.append(actions);document.body.append(dlg);dlg.addEventListener('close',()=>dlg.remove());dlg.showModal();
 }
@@ -231,5 +238,5 @@ async function printMonth(){
 function render(){editorCanvas=null;editorCtx=null;editorLayer=null;
  switch(screen){case 'home':return home();case 'planner':return planner();case 'today':return todayScreen();case 'journal':return journal();case 'draw':return drawSelection();case 'editor':return drawEditor();case 'gallery':return gallery();case 'backup':return backup();default:screen='home';return home()}}
 render();
-window.addEventListener('storage',ev=>{if(ev.key===STORAGE_KEY && ev.newValue!==JSON.stringify(state)){externalUpdate=true;showError('Your work changed in another tab. Reload this page to see those changes before editing.');render()}});
+window.addEventListener('storage',ev=>{if(ev.key===STORAGE_KEY && ev.newValue!==lastStoredRaw){externalUpdate=true;showError('Your work changed in another tab. Reload this page to see those changes before editing.');render()}});
 if('serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('/sw.js').catch(()=>{});
