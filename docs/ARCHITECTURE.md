@@ -21,7 +21,7 @@ This is the **current source implementation**, not a certified working iOS build
 ```text
 CreativeMomentsApp  ── owns one PlannerStore ─────────────────────────────┐
                                                                          │
-HomeView ── TodayView / MonthView ── store methods + Binding ────────────┤
+HomeView ── PlannerView ── TodayView / MonthView ── store methods + Binding ────────────┤
   │                                │                                      │
   │                                ├─ PlannerDocument ── planner.json    │
   │                                ├─ PKDrawing files ── YYYY-MM-N.drawing│
@@ -36,7 +36,7 @@ HomeView ── TodayView / MonthView ── store methods + Binding ───�
 2. `TodayView` adds a task using `store.addTask(_:in:dueDate:)`; `MonthView` adds an undated task. Both use the same `PlannerTask` and save path.
 3. `MonthView` edits a task by **stable UUID**. `TaskDueDateView` updates the optional `dueDateKey`. Tasks remain stored in their owning month even if the due date points elsewhere.
 4. `MonthView` confirms carry-forward before `store.carryForwardUnfinished(into:)` **moves** incomplete tasks from the previous month. It preserves task UUIDs, leaves completed tasks behind, and moves outdated due dates to the destination month's first day. Repeating the operation has no additional effect.
-5. Year arrows in `HomeView` construct `PlannerMonth` dynamically. `PlannerMonth.all` still lists the original 18 months for backwards compatibility/tests; it is **not** a limit on navigation.
+5. Year arrows in `PlannerView` construct `PlannerMonth` dynamically. `PlannerMonth.all` still lists the original 18 months for backwards compatibility/tests; it is **not** a limit on navigation.
 
 ### Saving, drawing, backup, and restore
 
@@ -62,3 +62,12 @@ HomeView ── TodayView / MonthView ── store methods + Binding ───�
 4. Add focused tests for legacy decoding, persisted-data changes, carry-forward, export/restore and failure/rollback paths. Never describe syntax parsing as an Xcode build.
 5. Update `docs/FEATURE_MATRIX.md` and `docs/CHANGELOG.md` for changed behavior. Only record commands and tests actually run in `docs/TEST_PLAN.md`.
 6. Use small reviewed PRs; never work simultaneously on incompatible schema changes.
+
+## Four-section navigation
+
+- `HomeView` owns one navigation stack and offers My Planner, Color & Draw, My Journal and My Creations. Standard navigation returns to Home; the drawing editor is a full-screen presentation with Done returning to its originating section.
+- `PlannerView` preserves the previous home’s Today/month navigation, cover personalization and backup access.
+- `ColorDrawView` selects existing seasonal drawings by year/month and opens `DoodleEditor`; Free draw opens the current month's existing free section. Selecting a picture resumes that month/section, not a new duplicate drawing.
+- `JournalView` selects a month; `JournalMonthView` uses `PlannerStore.binding` for the existing `notes`, `joy` and `carryForward` fields and flushes on exit. Planner and journal edit the same records.
+- `PlannerStore.savedDrawings()` enumerates canonical v1 drawing filenames, including those without planner JSON records, newest month first. `SavedDrawing` is an in-memory reference, not a new stored type. `CreationsView` refreshes on store revision after save/restore. Thumbnails load through the store in view tasks, outside body evaluation; opening an item uses the existing editor and sharing flow.
+- No schema, drawing coordinates, artwork or backup format changes. Undo beyond the existing drawing editor remains a later usability task.

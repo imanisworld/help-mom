@@ -154,3 +154,56 @@ final class PlannerInteractionTests: XCTestCase {
         XCTAssertNil(store.errorMessage)
     }
 }
+
+@MainActor
+final class PlannerNavigationDataTests: XCTestCase {
+    func testGalleryFindsLegacyDrawingsWithoutPlannerRecords() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        for name in ["2026-12-3.drawing", "2028-01-2.drawing", "2028-01-0.drawing"] {
+            try PKDrawing().dataRepresentation().write(to: root.appendingPathComponent(name))
+        }
+        for name in ["2028-13-0.drawing", "0000-01-0.drawing", "2028-01-4.drawing", "2028-1-0.drawing", "2028-01-00.drawing", "export.png", "unrelated.txt"] {
+            try Data().write(to: root.appendingPathComponent(name))
+        }
+        let store = PlannerStore(root: root)
+        XCTAssertTrue(store.document.months.isEmpty)
+        XCTAssertEqual(store.savedDrawings().map(\.id), ["2028-01-0", "2028-01-2", "2026-12-3"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("unrelated.txt").path))
+    }
+
+    func testJournalBindingsSharePlannerRecordsAndPersist() {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let month = PlannerMonth(year: 2027, month: 3)
+        let store = PlannerStore(root: root)
+        store.update(month) { $0.notes = "Existing planner note"; $0.tasks = [PlannerTask(title: "Keep task")] }
+        let notes = store.binding(month, \.notes)
+        XCTAssertEqual(notes.wrappedValue, "Existing planner note")
+        notes.wrappedValue = "Journal edit"
+        store.binding(month, \.joy).wrappedValue = "A quiet moment"
+        store.binding(month, \.carryForward).wrappedValue = "More sketching"
+        store.flush()
+        let reopened = PlannerStore(root: root)
+        XCTAssertEqual(reopened.record(month).notes, "Journal edit")
+        XCTAssertEqual(reopened.record(month).joy, "A quiet moment")
+        XCTAssertEqual(reopened.record(month).carryForward, "More sketching")
+        XCTAssertEqual(reopened.record(month).tasks.first?.title, "Keep task")
+    }
+
+    func testGalleryRefreshesAfterBackupRestore() throws {
+        let parent = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: parent) }
+        let store = PlannerStore(root: parent.appendingPathComponent("planner"))
+        let month = PlannerMonth(year: 2027, month: 3)
+        XCTAssertTrue(store.savedDrawings().isEmpty)
+        store.saveDrawing(PKDrawing(), month: month, section: .season)
+        let backup = try store.exportEditableBackup()
+        defer { try? FileManager.default.removeItem(at: backup) }
+        store.saveDrawing(PKDrawing(), month: month, section: .free)
+        XCTAssertEqual(store.savedDrawings().count, 2)
+        try store.restoreEditableBackup(from: backup)
+        XCTAssertEqual(store.savedDrawings().map(\.id), ["2027-03-0"])
+    }
+}

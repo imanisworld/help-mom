@@ -22,3 +22,9 @@
 - Local simulator build blocked by missing full Xcode; no runtime success claimed.
 - Fixed the CI-confirmed nonexistent Cocoa error code for unsupported backup versions; rejection and saved formats remain unchanged.
 - Verified Xcode 26.6 simulator build and all 12 XCTest tests (zero failures) in CI run 43780104771.
+
+## Phase 2 — Simple home and navigation
+- Added My Planner, Color & Draw, My Journal and My Creations with large, labeled home cards.
+- Preserved existing planner, cover, drawing, sharing and backup flows.
+- Journal shares existing monthly notes; creations browse existing saved drawings across years with previews.
+- No new dependencies, artwork changes or saved-format migration. Native verification pending.

@@ -241,6 +241,30 @@ final class PlannerStore: ObservableObject {
         }
     }
 
+    /// The gallery discovers existing v1 drawing files, including months with no planner notes.
+    func savedDrawings() -> [SavedDrawing] {
+        do {
+            return try FileManager.default.contentsOfDirectory(atPath: root.path).compactMap { name -> SavedDrawing? in
+                guard name.hasSuffix(".drawing") else { return nil }
+                let stem = String(name.dropLast(".drawing".count))
+                let parts = stem.split(separator: "-", omittingEmptySubsequences: false)
+                guard parts.count == 3, parts[0].count == 4, parts[1].count == 2,
+                      let year = Int(parts[0]), (1...9999).contains(year),
+                      let month = Int(parts[1]), (1...12).contains(month),
+                      let number = Int(parts[2]), let section = DoodleSection(rawValue: number) else { return nil }
+                let drawing = SavedDrawing(month: PlannerMonth(year: year, month: month), section: section)
+                guard drawing.id == stem else { return nil }
+                return drawing
+            }.sorted {
+                if $0.month.id != $1.month.id { return $0.month.id > $1.month.id }
+                return $0.section.rawValue < $1.section.rawValue
+            }
+        } catch {
+            errorMessage = "Could not find your saved drawings. Your files have not been changed. \(error.localizedDescription)"
+            return []
+        }
+    }
+
     func scene(_ month: PlannerMonth) -> UIImage? {
         guard let url = Bundle.main.url(forResource: String(format: "scene-%02d", month.month), withExtension: "png") else { return nil }
         return UIImage(contentsOfFile: url.path)

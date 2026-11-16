@@ -113,3 +113,10 @@ enum DoodleSection: Int, CaseIterable, Identifiable {
     var title: String { ["Color the season", "Sketch an idea", "Explore patterns", "Free doodle"][rawValue] }
     var subtitle: String { ["Make the seasonal scene your own.", "A shape, object, place, or possibility.", "Repeat a line, leaf, curve, or motif.", "Follow your hand and see what appears."][rawValue] }
 }
+
+/// A reference to an existing drawing file; no new persisted format or duplicate artwork.
+struct SavedDrawing: Identifiable, Equatable {
+    let month: PlannerMonth
+    let section: DoodleSection
+    var id: String { "\(month.id)-\(section.rawValue)" }
+}

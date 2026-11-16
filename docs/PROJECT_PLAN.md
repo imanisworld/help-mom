@@ -10,7 +10,7 @@ A working copy includes initial Today/due-date/year-navigation/carry-forward/edi
 
 Deliver an installable iPhone/iPad app that opens from its icon and supports planning, drawing, reflection and finding saved work without coding knowledge or developer assistance. Ease of use is a requirement for this milestone, not final release polish. This milestone takes priority over the feature expansion backlog below; preserve its data-safety gates.
 
-### Proposed home (not implemented yet)
+### Four-section home (implemented; manual acceptance pending)
 
 **Creative Moments** — Your space to plan, create, and reflect.
 
@@ -21,7 +21,7 @@ Deliver an installable iPhone/iPad app that opens from its icon and supports pla
 | My Journal | Write or reflect | Direct access to editable notes/reflections |
 | My Creations | See saved work | Browse, reopen and share saved drawings |
 
-Reuse existing planner records and drawings. Separate journal navigation and a creations browser are planned work, not existing completed features. Begin with clearly labeled sections; search is optional if finding work is already easy. Coloring initially means the existing freehand drawing tools; tap-to-fill is not implied.
+Reuse existing planner records and drawings. Separate journal navigation and a creations browser now use the existing records and drawing files; manual usability acceptance is pending. Begin with clearly labeled sections; search is optional if finding work is already easy. Coloring initially means the existing freehand drawing tools; tap-to-fill is not implied.
 
 ### Everyday experience requirements
 

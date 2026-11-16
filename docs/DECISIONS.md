@@ -16,3 +16,5 @@
 - iPad-first creative experience vs equal phone/tablet parity.
 - Optional iCloud synchronization after editable backup/restore is proven.
 - Pricing model (not yet implemented).
+
+- **D-010 (2026-11-15): New sections reuse existing storage.** Journal entries are the existing monthly notes/reflections. Creations reference canonical drawing files across all years, including drawings without monthly JSON records. Selecting a seasonal image resumes that month’s drawing rather than silently creating a new copy.

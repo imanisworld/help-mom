@@ -70,3 +70,9 @@ After installation, ask Mom to complete these tasks without step-by-step coachin
 7. Cancel an accidental destructive action and demonstrate recovery where deletion is supported.
 
 Record completion, hesitation, wrong turns, requests for help, and any lost work. Repeat with larger system text and check layouts on iPhone and iPad. Any required developer-tool step or lost work fails acceptance. Proposed home/journal/gallery routes must be implemented before testing them; do not record this checklist as passed from unit-test results.
+
+## Phase 2 verification
+- Local static package validation: PASS after navigation implementation.
+- Local native build: BLOCKED by Command Line Tools selection (full Xcode unavailable).
+- Added three regression tests: legacy drawing discovery/filtering/order, shared journal/planner persistence, gallery refresh after restore. CI execution pending.
+- Manual checks pending: open each home card; return Home; navigate older/future months; edit journal and verify same planner notes; resume seasonal/free drawing; reopen/share a creation; empty gallery; accessibility text sizes and VoiceOver.

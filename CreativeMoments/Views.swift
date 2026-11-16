@@ -5,13 +5,246 @@ import UniformTypeIdentifiers
 private let plum = Color(red: 0.32, green: 0.22, blue: 0.34)
 
 struct HomeView: View {
+    @Environment(\.dynamicTypeSize) private var textSize
+    @State private var showHelp = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Creative Moments")
+                            .font(.system(.largeTitle, design: .serif, weight: .bold))
+                            .foregroundStyle(plum)
+                            .accessibilityAddTraits(.isHeader)
+                        Text("Your space to plan, create, and reflect.")
+                            .font(.title3).foregroundStyle(.secondary)
+                    }.padding(.vertical, 12)
+                    LazyVGrid(columns: textSize.isAccessibilitySize
+                              ? [GridItem(.flexible())]
+                              : [GridItem(.adaptive(minimum: 300), spacing: 16)], spacing: 16) {
+                        NavigationLink { PlannerView() } label: {
+                            HomeCard(title: "My Planner", subtitle: "View and edit plans", symbol: "calendar", color: plum)
+                        }
+                        NavigationLink { ColorDrawView() } label: {
+                            HomeCard(title: "Color & Draw", subtitle: "Make something", symbol: "paintpalette", color: Color(red: 0.28, green: 0.43, blue: 0.35))
+                        }
+                        NavigationLink { JournalView() } label: {
+                            HomeCard(title: "My Journal", subtitle: "Write or reflect", symbol: "book.closed", color: Color(red: 0.48, green: 0.32, blue: 0.23))
+                        }
+                        NavigationLink { CreationsView() } label: {
+                            HomeCard(title: "My Creations", subtitle: "See saved work", symbol: "photo.on.rectangle.angled", color: Color(red: 0.29, green: 0.37, blue: 0.53))
+                        }
+                    }.buttonStyle(.plain)
+                    NavigationLink { BackupView() } label: {
+                        Label("Back up your work", systemImage: "externaldrive")
+                            .padding(.vertical, 12)
+                    }
+                    Text("A little space for you, every day.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }.padding(20).frame(maxWidth: 850)
+                    .frame(maxWidth: .infinity)
+            }.background(Color(red: 0.97, green: 0.95, blue: 0.96))
+                .navigationTitle("Home").navigationBarTitleDisplayMode(.inline)
+                .toolbar { Button("Help", systemImage: "questionmark.circle") { showHelp = true } }
+                .sheet(isPresented: $showHelp) { AboutView() }
+        }
+    }
+}
+
+private struct HomeCard: View {
+    let title: String
+    let subtitle: String
+    let symbol: String
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Image(systemName: symbol).font(.largeTitle).foregroundStyle(color)
+                .accessibilityHidden(true)
+            Text(title).font(.system(.title2, design: .serif, weight: .bold)).foregroundStyle(color)
+            Text(subtitle).font(.body).foregroundStyle(.secondary)
+        }.padding(24).frame(maxWidth: .infinity, minHeight: 170, alignment: .leading)
+            .background(.white, in: RoundedRectangle(cornerRadius: 22))
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(color.opacity(0.16)))
+            .contentShape(RoundedRectangle(cornerRadius: 22))
+            .accessibilityElement(children: .combine)
+    }
+}
+
+private struct YearNavigation: View {
+    @Binding var year: Int
+    var body: some View {
+        HStack {
+            Button { year -= 1 } label: {
+                Image(systemName: "chevron.left").frame(minWidth: 44, minHeight: 44)
+            }.accessibilityLabel("Previous year").disabled(year <= 1)
+            Spacer()
+            Text(String(year)).font(.title2.bold()).accessibilityAddTraits(.isHeader)
+            Spacer()
+            Button { year += 1 } label: {
+                Image(systemName: "chevron.right").frame(minWidth: 44, minHeight: 44)
+            }.accessibilityLabel("Next year").disabled(year >= 9999)
+        }
+    }
+}
+
+struct ColorDrawView: View {
+    @EnvironmentObject private var store: PlannerStore
+    @Environment(\.dynamicTypeSize) private var textSize
+    @State private var year = Calendar.current.component(.year, from: Date())
+    @State private var selection: SavedDrawing?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Choose a picture and make it your own.").font(.title3)
+                Text("Drawings stay with their month. Tap a picture again to keep drawing.")
+                    .foregroundStyle(.secondary)
+                YearNavigation(year: $year)
+                Button {
+                    selection = SavedDrawing(month: PlannerMonth.forDate(Date()), section: .free)
+                } label: {
+                    Label("Free draw · this month", systemImage: "pencil.tip")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }.buttonStyle(.bordered)
+                LazyVGrid(columns: textSize.isAccessibilitySize
+                          ? [GridItem(.flexible())]
+                          : [GridItem(.adaptive(minimum: 240), spacing: 16)], spacing: 16) {
+                    ForEach(1...12, id: \.self) { number in
+                        let month = PlannerMonth(year: year, month: number)
+                        Button { selection = SavedDrawing(month: month, section: .season) } label: {
+                            VStack(alignment: .leading, spacing: 10) {
+                                if let picture = store.scene(month) {
+                                    Image(uiImage: picture).resizable().scaledToFit().accessibilityHidden(true)
+                                }
+                                Text(month.theme).font(.headline)
+                                Text(month.title).font(.subheadline).foregroundStyle(.secondary)
+                            }.padding().frame(maxWidth: .infinity, alignment: .leading)
+                                .background(.background, in: RoundedRectangle(cornerRadius: 16))
+                        }.buttonStyle(.plain)
+                            .accessibilityLabel("\(month.theme), \(month.title), open drawing")
+                    }
+                }
+            }.padding().frame(maxWidth: 850).frame(maxWidth: .infinity)
+        }.background(Color(.systemGroupedBackground))
+            .navigationTitle("Color & Draw")
+            .fullScreenCover(item: $selection) { drawing in
+                DoodleEditor(month: drawing.month, section: drawing.section)
+            }
+    }
+}
+
+struct JournalView: View {
+    @State private var year = Calendar.current.component(.year, from: Date())
+    var body: some View {
+        List {
+            Section {
+                Text("A quiet place for your notes and reflections.").font(.title3)
+                NavigationLink("Write this month") { JournalMonthView(month: PlannerMonth.forDate(Date())) }
+            }
+            Section {
+                YearNavigation(year: $year).buttonStyle(.borderless)
+                ForEach(1...12, id: \.self) { number in
+                    let month = PlannerMonth(year: year, month: number)
+                    NavigationLink(month.title) { JournalMonthView(month: month) }
+                        .padding(.vertical, 8)
+                }
+            } header: { Text("Browse your journal") }
+        }.navigationTitle("My Journal")
+    }
+}
+
+struct JournalMonthView: View {
+    @EnvironmentObject private var store: PlannerStore
+    let month: PlannerMonth
+    var body: some View {
+        Form {
+            Section { Text("These are the same notes and reflections you’ll find in My Planner.") }
+            Section("Notes & inspiration") {
+                TextField("What’s on your mind?", text: store.binding(month, \.notes), axis: .vertical)
+                    .lineLimit(6...20)
+            }
+            Section("Something I enjoyed creating") {
+                TextField("A moment worth remembering", text: store.binding(month, \.joy), axis: .vertical)
+                    .lineLimit(3...12)
+            }
+            Section("An idea to carry forward") {
+                TextField("What would you like to explore next?", text: store.binding(month, \.carryForward), axis: .vertical)
+                    .lineLimit(3...12)
+            }
+            Section { Text("Your changes save automatically.").foregroundStyle(.secondary) }
+        }.navigationTitle(month.title).navigationBarTitleDisplayMode(.inline)
+            .onDisappear { store.flush() }
+    }
+}
+
+struct CreationsView: View {
+    @EnvironmentObject private var store: PlannerStore
+    @State private var drawings: [SavedDrawing] = []
+    @State private var selection: SavedDrawing?
+    @State private var loaded = false
+    var body: some View {
+        Group {
+            if !loaded {
+                ProgressView("Finding your creations…")
+            } else if drawings.isEmpty {
+                ContentUnavailableView {
+                    Label("Your creative space is waiting", systemImage: "paintpalette")
+                } description: {
+                    Text("Drawings you save appear here, ready to open and keep creating.")
+                } actions: {
+                    NavigationLink("Choose a picture") { ColorDrawView() }.buttonStyle(.borderedProminent)
+                }
+            } else {
+                List(drawings) { drawing in
+                    Button { selection = drawing } label: {
+                        HStack(spacing: 16) {
+                            CreationThumbnail(drawing: drawing)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(drawing.section.title).font(.headline)
+                                Text(drawing.month.title).foregroundStyle(.secondary)
+                                Text("Open, edit or share").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }.padding(.vertical, 8)
+                    }.buttonStyle(.plain)
+                }
+            }
+        }.navigationTitle("My Creations")
+            .task(id: store.revision) {
+                drawings = store.savedDrawings()
+                loaded = true
+            }
+            .fullScreenCover(item: $selection) { drawing in
+                DoodleEditor(month: drawing.month, section: drawing.section)
+            }
+    }
+}
+
+private struct CreationThumbnail: View {
+    @EnvironmentObject private var store: PlannerStore
+    let drawing: SavedDrawing
+    @State private var preview: UIImage?
+    var body: some View {
+        Group {
+            if let preview { Image(uiImage: preview).resizable().scaledToFit() }
+            else { Image(systemName: "paintpalette").font(.largeTitle).foregroundStyle(plum) }
+        }.frame(width: 72, height: 72).background(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 8)).accessibilityHidden(true)
+            .task(id: store.revision) {
+                preview = store.artwork(drawing.month, drawing.section, size: 144)
+            }
+    }
+}
+
+struct PlannerView: View {
     @EnvironmentObject var store: PlannerStore
     @State private var showCover = false
     @State private var showAbout = false
     @State private var selectedYear = Calendar.current.component(.year, from: Date())
     @State private var today = Date()
     var body: some View {
-        NavigationStack {
+        Group {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 8) {
@@ -82,7 +315,7 @@ struct HomeView: View {
                     Text("© 2026 T. Crumble • Bridging the Gap").font(.caption).foregroundStyle(.secondary)
                 }.padding(20).frame(maxWidth: 1000)
             }.frame(maxWidth: .infinity).background(Color(red: 0.96, green: 0.94, blue: 0.96))
-                .navigationTitle("Your creative space").navigationBarTitleDisplayMode(.inline)
+                .navigationTitle("My Planner").navigationBarTitleDisplayMode(.inline)
                 .toolbar { Button { showAbout = true } label: { Image(systemName: "info.circle") }.accessibilityLabel("Help and privacy") }
                 .sheet(isPresented: $showCover) { CoverView() }
                 .sheet(isPresented: $showAbout) { AboutView() }
@@ -441,7 +674,7 @@ struct AboutView: View {
             List {
                 Section("Thank you") { Text("Thank you for choosing Creative Moments by T. Crumble. Make room for your plans, imagination, and small everyday joys.") }
                 Section("Using your planner") {
-                    Text("Open Today to see dated tasks, including overdue items. Browse years with the arrows, then choose a month to use Calendar, Checklist, and Doodle. Unfinished tasks can be moved forward with confirmation.")
+                    Text("Start from Home: My Planner for plans and tasks, Color & Draw for pictures, My Journal for reflections, and My Creations to reopen saved drawings. Changes save automatically. Open a drawing and tap Share image to share it.")
                     Text("Changes save automatically. Month PDF exports are read-only; use Back up or restore from the home screen to export a complete editable backup of notes, tasks, cover, and drawings.")
                 }
                 Section("Privacy") {
