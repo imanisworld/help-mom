@@ -13,7 +13,7 @@ The app uses the original preview storage key `creative-moments-browser-preview-
 
 ## What this release includes
 
-Four-section home, month/date tasks, Today and overdue list, move unfinished tasks, journal, seasonal coloring and freehand drawing with marker/eraser/undo/redo/zoom, saved-creations gallery, cover photo/title, export/restore, printable monthly PDF flow, service-worker cache, manifest and local art assets.
+Notebook-style home, calendar and checklist, Today and overdue list, carry-forward, dated lined journal with the original monthly entries preserved, seasonal tap-to-fill coloring plus pen/marker/eraser/undo/redo, large color swatches, saved-creations gallery, cover photo/title editing from home, export/restore, printable monthly PDF (including daily journal entries), offline cache and original art assets. The PDF uses the browser print/save flow.
 
 ## Manual acceptance still required
 
