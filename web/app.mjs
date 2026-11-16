@@ -48,7 +48,7 @@ function shell(title,subtitle){
  if(screen!=='home')hd.append(btn('‹ Home',()=>navigate('home'),'back'));
  add(hd,node('div','logo','CM'));
  const brand=node('div','app-title');add(brand,node('strong','',title),node('small','',subtitle||'Plan · Create · Reflect'));hd.append(brand);
- hd.append(node('span','pill','WEB APP'));root.append(hd);
+ hd.append(node('span','pill','MY SPACE'));root.append(hd);
  const main=node('main','body');main.id='main';root.append(main);app.append(root);
  return main;
 }
@@ -70,7 +70,7 @@ function editable(parent,title,field,key,rows=4){
 }
 function home(){
  const main=shell('Creative Moments','Your space to plan, create, and reflect');
- add(main,node('h1','','Creative Moments'),node('p','lead','Make time for your plans, ideas, and creativity.'));notice(main);
+ const intro=node('section','home-intro');add(intro,node('p','eyebrow','YOUR CREATIVE SPACE'),node('h1','','Creative Moments'),node('p','lead','A calm place to plan your days, make something beautiful, and keep your ideas.'));main.append(intro);notice(main);main.append(node('h2','section-label','What would you like to do?'));
  const grid=node('div','cards');[
  ['▦','My Planner','Calendars, today, and checklists','planner'],
  ['✎','Color & Draw','Seasonal art and freehand drawing','draw'],
