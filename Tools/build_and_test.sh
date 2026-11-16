@@ -10,7 +10,15 @@ fi
 args=(-project CreativeMoments.xcodeproj -scheme CreativeMoments -configuration Debug -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO)
 xcodebuild "${args[@]}" -destination 'generic/platform=iOS Simulator' build
 if [[ -z "${DESTINATION:-}" ]]; then
-  DESTINATION="$(xcodebuild -project CreativeMoments.xcodeproj -scheme CreativeMoments -showdestinations 2>&1 | sed -nE '/platform:iOS Simulator/ { /placeholder/d; s/.*id:([^,}]+).*/platform=iOS Simulator,id=\1/p; }' | sed -n '1p')"
+  # CoreSimulator sometimes needs extra time to register devices after Xcode starts.
+  # Retry before treating transient discovery delay as a missing simulator.
+  for attempt in 1 2 3 4; do
+    choices="$(xcodebuild -project CreativeMoments.xcodeproj -scheme CreativeMoments -showdestinations 2>&1 || true)"
+    DESTINATION="$(printf '%s\n' "$choices" | python3 -c 'import re,sys; s=sys.stdin.read(); ids=re.findall(r"\{\s*platform:iOS Simulator,[^\n}]*?\bid:([0-9A-Fa-f-]{36})",s); print("platform=iOS Simulator,id="+ids[0] if ids else "")')"
+    if [[ -n "$DESTINATION" ]]; then break; fi
+    echo "Simulator not ready on discovery attempt ${attempt}/4; retrying..." >&2
+    sleep 3
+  done
 fi
 if [[ -z "$DESTINATION" ]]; then
   xcodebuild -project CreativeMoments.xcodeproj -scheme CreativeMoments -showdestinations
