@@ -40,7 +40,11 @@ def run(url):
         )
         page = context.new_page()
         page.on("pageerror", lambda error: failures.append(str(error)))
-        page.on("dialog", lambda dialog: dialog.accept())
+        native_dialogs = []
+        def accept_dialog(dialog):
+            native_dialogs.append(dialog.message)
+            dialog.accept()
+        page.on("dialog", accept_dialog)
 
         # Home and planner: create, persist, and reopen.
         page.goto(url, wait_until="networkidle")
@@ -105,7 +109,10 @@ def run(url):
             "mimeType": "application/json",
             "buffer": json.dumps(backup).encode(),
         })
-        assert page.get_by_text("Review imported backup").is_visible()
+        try:
+            page.get_by_text("Review imported backup").wait_for(state="visible", timeout=5000)
+        except Exception as exc:
+            raise AssertionError(f"Backup file did not open the restore review. Browser alerts: {native_dialogs}") from exc
         page.get_by_role("button", name="Replace my browser data").click()
         page.get_by_role("button", name=re.compile("My Journal")).click()
         assert page.get_by_label("Notes & inspiration").input_value() == "Browser acceptance journal"
