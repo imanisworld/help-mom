@@ -79,13 +79,22 @@ def run(url):
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2")
         page.screenshot(path=str(screenshots / "planner-mobile.png"), full_page=True)
 
-        # Journal: autosave into the same month's record across a reload.
+        # Daily journal entries are independently dated, editable, and persistent.
         open_home(page)
         page.get_by_role("button", name=re.compile("My Journal")).click()
-        page.get_by_label("Notes & inspiration").fill("Browser acceptance journal")
+        date_value=page.locator("#journal-date").input_value()
+        page.get_by_label("Journal entry", exact=True).fill("Browser acceptance journal")
+        page.screenshot(path=str(screenshots / "journal-mobile.png"), full_page=True)
         page.reload(wait_until="networkidle")
         page.get_by_role("button", name=re.compile("My Journal")).click()
-        assert page.get_by_label("Notes & inspiration").input_value() == "Browser acceptance journal"
+        assert page.locator("#journal-date").input_value() == date_value
+        assert page.get_by_label("Journal entry", exact=True).input_value() == "Browser acceptance journal"
+        page.get_by_role("button", name="‹ Day").click()
+        assert page.get_by_label("Journal entry", exact=True).input_value() == ""
+        page.get_by_role("button", name="Day ›").click()
+        assert page.get_by_label("Journal entry", exact=True).input_value() == "Browser acceptance journal"
+        page.locator("summary").filter(has_text="Older monthly notes").click()
+        assert page.get_by_label("Notes & inspiration").is_visible()
 
         # Drawing and saved creations: actually draw a stroke with mouse/pointer events.
         open_home(page)
@@ -119,10 +128,10 @@ def run(url):
         with page.expect_download() as result:
             page.get_by_role("button", name="Download complete backup").click()
         backup = json.loads(Path(result.value.path()).read_text())
-        assert backup["data"]["tasks"] and backup["data"]["notes"] and backup["data"]["drawings"]
+        assert backup["data"]["tasks"] and backup["data"]["journalEntries"] and backup["data"]["drawings"]
         open_home(page)
         page.get_by_role("button", name=re.compile("My Journal")).click()
-        page.get_by_label("Notes & inspiration").fill("Temporary text that must be restored")
+        page.get_by_label("Journal entry", exact=True).fill("Temporary text that must be restored")
         open_home(page)
         page.get_by_role("button", name="Backup & Restore").click()
         page.locator("#backup-file").set_input_files({
@@ -136,7 +145,7 @@ def run(url):
             raise AssertionError(f"Backup file did not open the restore review. Browser alerts: {native_dialogs}") from exc
         page.get_by_role("button", name="Replace my browser data").click()
         page.get_by_role("button", name=re.compile("My Journal")).click()
-        assert page.get_by_label("Notes & inspiration").input_value() == "Browser acceptance journal"
+        assert page.get_by_label("Journal entry", exact=True).input_value() == "Browser acceptance journal"
         open_home(page)
         page.get_by_role("button", name="Backup & Restore").click()
         assert page.get_by_role("button", name="Download previous version").is_visible()
