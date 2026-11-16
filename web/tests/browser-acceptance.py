@@ -49,16 +49,25 @@ def run(url):
         # Home and planner: create, persist, and reopen.
         page.goto(url, wait_until="networkidle")
         # The redesigned home must be comfortably legible on a phone without sideways scroll.
-        assert page.get_by_role("heading", name="What would you like to do?").is_visible()
+        assert page.get_by_role("heading", name="Checklist").is_visible()
+        assert page.get_by_role("heading", name="Coloring Page").is_visible()
+        assert page.get_by_role("button", name="Full calendar").is_visible()
+        assert page.get_by_role("button", name="Color this page").is_visible()
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2")
-        home_cards = page.locator(".card")
-        assert home_cards.count() == 4
-        bounds = [c.bounding_box() for c in home_cards.all()]
-        assert all(box and box["width"] >= 280 and box["height"] >= 100 for box in bounds)
-        assert bounds[0]["y"] < bounds[1]["y"] < bounds[2]["y"] < bounds[3]["y"], "Phone home cards should be stacked, not squeezed into two columns"
+        home_tabs = page.locator(".book-tab")
+        assert home_tabs.count() == 4
+        bounds = [c.bounding_box() for c in home_tabs.all()]
+        assert all(box and box["width"] >= 145 and box["height"] >= 54 for box in bounds)
+        assert abs(bounds[0]["y"] - bounds[1]["y"]) <= 2 and bounds[2]["y"] > bounds[1]["y"], "Phone tabs should be 2 by 2"
         screenshots = ROOT / "test-artifacts"
         screenshots.mkdir(exist_ok=True)
         page.screenshot(path=str(screenshots / "home-mobile.png"), full_page=True)
+        # A checklist should work directly from the opening planner page.
+        page.locator("#home-new-task").fill("Home checklist item")
+        page.get_by_role("button", name="Add task", exact=True).click()
+        assert page.get_by_text("Home checklist item").count() == 1
+        page.reload(wait_until="networkidle")
+        assert page.get_by_text("Home checklist item").count() == 1
         assert page.get_by_role("button", name=re.compile("My Planner")).is_visible()
         page.get_by_role("button", name=re.compile("My Planner")).click()
         page.locator("#new-task").fill("Browser acceptance task")
@@ -162,12 +171,13 @@ def run(url):
         page.set_viewport_size({"width": 1024, "height": 768})
         page.reload(wait_until="networkidle")
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2")
-        wide = [c.bounding_box() for c in page.locator(".card").all()]
-        assert len(wide) == 4 and abs(wide[0]["y"] - wide[1]["y"]) <= 2, "Desktop cards should use two columns"
+        wide = [c.bounding_box() for c in page.locator(".book-tab").all()]
+        assert len(wide) == 4 and all(abs(x["y"] - wide[0]["y"]) <= 2 for x in wide), "Desktop section tabs should fit on one row"
+        assert page.locator(".mom-workspace").is_visible()
         page.screenshot(path=str(screenshots / "home-desktop.png"), full_page=True)
 
         assert not failures, "Browser runtime errors: " + "; ".join(failures)
-        print("PASS: responsive mobile/desktop home, planner persistence, journal persistence, drawing/gallery, backup/restore, stale-tab protection, and offline reopen")
+        print("PASS: notebook home with real calendar/checklist/coloring, mobile/desktop layout, persistence, backup/restore, drawing/gallery, stale tabs and offline")
         context.close()
         browser.close()
 
