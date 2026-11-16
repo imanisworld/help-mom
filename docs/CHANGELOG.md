@@ -1,5 +1,12 @@
 # Change log
 
+## Phase 2 completion — navigation/accessibility (native tests pending)
+- Made all four drawing activities visible directly in Color & Draw, including Sketch and Patterns; preserved existing drawing storage and season gallery.
+- Reused the bounded year selector in My Planner to avoid inconsistent year navigation and undersized arrow targets.
+- Added four stable Home accessibility identifiers and native XCUITest smoke tests for navigation and the drawing editor's Done button.
+- No new third-party dependencies, saved formats or seasonal artwork changes. Native CI and manual testing are required before declaring Phase 2 fully verified.
+
+
 ## 2026-11-15 — Working copy: first planning and safety improvements (unverified on iOS)
 - Added a Today screen with dated/overdue tasks and shared daily notes.
 - Added year navigation while keeping the original saved month keys and artwork.
