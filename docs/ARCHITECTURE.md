@@ -67,7 +67,7 @@ HomeView ── PlannerView ── TodayView / MonthView ── store methods + 
 
 - `HomeView` owns one navigation stack and offers My Planner, Color & Draw, My Journal and My Creations. Standard navigation returns to Home; the drawing editor is a full-screen presentation with Done returning to its originating section.
 - `PlannerView` preserves the previous home’s Today/month navigation, cover personalization and backup access.
-- `ColorDrawView` selects existing seasonal drawings by year/month and opens `DoodleEditor`; Free draw opens the current month's existing free section. Selecting a picture resumes that month/section, not a new duplicate drawing.
+- `ColorDrawView` offers all four existing PencilKit sections for the current month (season, sketch, patterns, free) and lets the user choose older/newer seasonal pictures with `YearNavigation`. Selecting a picture resumes that month/section, not a new duplicate drawing.
 - `JournalView` selects a month; `JournalMonthView` uses `PlannerStore.binding` for the existing `notes`, `joy` and `carryForward` fields and flushes on exit. Planner and journal edit the same records.
 - `PlannerStore.savedDrawings()` enumerates canonical v1 drawing filenames, including those without planner JSON records, newest month first. `SavedDrawing` is an in-memory reference, not a new stored type. `CreationsView` refreshes on store revision after save/restore. Thumbnails load through the store in view tasks, outside body evaluation; opening an item uses the existing editor and sharing flow.
 - No schema, drawing coordinates, artwork or backup format changes. Undo beyond the existing drawing editor remains a later usability task.
