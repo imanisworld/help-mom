@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Creative Moments: build and test",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "Tools/build_and_test.sh"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Creative Moments: static package checks",
+      "type": "process",
+      "command": "python3",
+      "args": [
+        "Tools/validate_package.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

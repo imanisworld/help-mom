@@ -22,16 +22,9 @@ done
 [[ -f "$ROOT/CreativeMoments/Assets.xcassets/AppIcon.appiconset/AppIcon.png" ]] ||
   { echo 'STOP: App icon missing.' >&2; exit 1; }
 
-# The optional tree-sitter validator belongs to the original source package.
-# It requires dependencies that are not necessary for importing source files.
-# The project/artwork checks above are mandatory; native Xcode checks run in CI.
+# Static checks use only Python's standard library and native macOS tools.
 if [[ -f "$ROOT/Tools/validate_package.py" ]]; then
-  if python3 -c 'import tree_sitter' >/dev/null 2>&1; then
-    python3 "$ROOT/Tools/validate_package.py"
-  else
-    echo 'NOTICE: Optional tree-sitter package validation skipped (dependency absent).'
-    echo 'The Xcode build and tests must pass before this branch is merged.'
-  fi
+  python3 "$ROOT/Tools/validate_package.py"
 fi
 
 echo 'IMPORTANT: The GitHub repository is currently PUBLIC.'
@@ -46,19 +39,25 @@ git clone --quiet --single-branch --branch "$BRANCH" "$REMOTE" "$WORK/help-mom"
 
 for name in CreativeMoments CreativeMoments.xcodeproj CreativeMomentsTests; do
   [[ -d "$ROOT/$name" ]] || { echo "STOP: Missing $name" >&2; exit 1; }
-  rsync -a --exclude '.DS_Store' --exclude 'xcuserdata/' --exclude 'DerivedData/' \
+  rsync -a --ignore-existing --exclude '.DS_Store' --exclude 'xcuserdata/' --exclude 'DerivedData/' \
     "$ROOT/$name/" "$WORK/help-mom/$name/"
 done
 for name in README.md AGENTS.md CLAUDE.md .gitignore; do
-  if [[ -f "$ROOT/$name" ]]; then cp "$ROOT/$name" "$WORK/help-mom/$name"; fi
+  if [[ -f "$ROOT/$name" && ! -e "$WORK/help-mom/$name" ]]; then cp "$ROOT/$name" "$WORK/help-mom/$name"; fi
 done
 for name in Tools docs Submission; do
   if [[ -d "$ROOT/$name" ]]; then
     mkdir -p "$WORK/help-mom/$name"
-    rsync -a --exclude '.DS_Store' "$ROOT/$name/" "$WORK/help-mom/$name/"
+    rsync -a --ignore-existing --exclude '.DS_Store' "$ROOT/$name/" "$WORK/help-mom/$name/"
   fi
 done
 
+echo 'Existing remote files are preserved. Review differences below; updates require a manual merge.'
+for name in CreativeMoments CreativeMoments.xcodeproj CreativeMomentsTests Tools docs Submission; do
+  if [[ -d "$ROOT/$name" ]]; then
+    rsync -rcn --out-format='%n' --exclude '.DS_Store' --exclude 'xcuserdata/' --exclude 'DerivedData/' "$ROOT/$name/" "$WORK/help-mom/$name/"
+  fi
+done
 cd "$WORK/help-mom"
 git add -A
 git diff --cached --check
